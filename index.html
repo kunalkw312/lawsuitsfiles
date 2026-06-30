@@ -161,11 +161,11 @@
         .login-box button[type="submit"] { width: 100%; padding: 14px; background: #0d6efd; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 1em; font-weight: 600; margin-top: 10px; transition: background 0.2s; }
         .login-box button[type="submit"]:hover { background: #0b5ed7; }
         
-        /* New Close Button at the bottom of the login box */
         .close-login-btn-bottom { margin-top: 20px; width: 100%; padding: 12px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 6px; font-weight: 600; font-size: 0.95em; cursor: pointer; transition: all 0.2s; }
         .close-login-btn-bottom:hover { background: #e2e8f0; color: #0a1128; }
 
-        .admin-dashboard { display: none; background: #f8f9fa; width: 100%; max-width: 1100px; height: 90vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
+        /* FIXED: Removed internal conflicting "display: none;" from class rule to avoid overrides */
+        .admin-dashboard { background: #f8f9fa; width: 100%; max-width: 1100px; height: 90vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
         .admin-header { background: #0a1128; color: #fff; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
         .admin-header h2 { font-size: 1.5em; margin: 0; }
         .admin-nav { display: flex; gap: 15px; flex-wrap: wrap; }
@@ -175,7 +175,6 @@
         
         .admin-body { padding: 30px; overflow-y: auto; flex: 1; }
         
-        /* Table responsive wrapper */
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
         .admin-table { width: 100%; border-collapse: collapse; min-width: 700px; }
         .admin-table th, .admin-table td { padding: 14px 18px; text-align: left; border-bottom: 1px solid #e2e8f0; }
@@ -190,10 +189,12 @@
 
         /* ================= MOBILE RESPONSIVENESS ================= */
         @media (max-width: 768px) {
+            /* FIXED: Hide header actions "Get Started" button completely on mobile viewport layouts */
+            .header-actions { display: none !important; }
+
             /* Headers & Nav */
             header { flex-direction: column; padding: 15px 20px; gap: 15px; text-align: center; }
             nav { justify-content: center; width: 100%; gap: 15px; }
-            .header-actions { width: 100%; justify-content: center; }
             
             /* Hero Elements */
             .hero { flex-direction: column; text-align: center; padding: 40px 20px; gap: 30px; }
@@ -346,15 +347,14 @@
         <div class="details-wrapper">
             <a class="back-link" onclick="navigateToPage('cases')">← Back to Cases Directory</a>
             
-            <div class="details-hero" id="dynamicCaseDetailContainer">
-                </div>
+            <div class="details-hero" id="dynamicCaseDetailContainer"></div>
         </div>
     </main>
 
     <main id="aboutPage" class="page-content">
         <section class="hero">
             <div class="hero-text">
-                <h1>Our Mission for Equal Representation</h1>
+                <h2>Our Mission for Equal Representation</h2>
                 <p>Founded with the core tenet that legal information shouldn't stay locked behind astronomical corporate retainer systems, LawsuitFiles establishes structured data tracking maps empowering individuals to challenge complex enterprise faults securely.</p>
             </div>
             <div class="hero-image">
@@ -482,9 +482,9 @@
             </div>
             <div>
                 <h3>CONTACT DETAILS</h3>
-                <p id="footerTel">Tel Support: +1 (555) 000-0000</p>
-                <p id="footerEmail">✉ Queries: legal@lawsuitfiles.com</p>
-                <p id="footerAddress">📍 Intake: New York, United States</p>
+                <p id="footerTel">Tel Support: Loading...</p>
+                <p id="footerEmail">✉ Queries: Loading...</p>
+                <p id="footerAddress">📍 Intake: Loading...</p>
             </div>
         </div>
         <div class="footer-bottom">
@@ -507,6 +507,7 @@
             <button class="close-login-btn-bottom" id="closeLoginBtn">Cancel / Close</button>
         </div>
 
+        <!-- FIXED: Managed initial hide state smoothly exclusively via inline declaration to prevent layout bugs -->
         <div class="admin-dashboard" id="adminDashboardBox" style="display: none;">
             <header class="admin-header">
                 <h2>⚖️ Admin Dashboard</h2>
