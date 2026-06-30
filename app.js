@@ -25,26 +25,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const ADMIN_EMAIL = "admin@gmail.com";
     const ADMIN_PASSWORD = "admin1234";
 
-    // Check Auth State using sessionStorage instead of Firebase
+    // Check Auth State using sessionStorage instead of Firebase Auth
     function checkAuthState() {
         const isLoggedIn = sessionStorage.getItem('isAdminLoggedIn');
         if (isLoggedIn === 'true') {
-            // Logged in: Show Dashboard, Hide Login
+            // Logged in: Show Dashboard, Hide Login Form
             if (loginBox) loginBox.style.display = 'none';
             if (dashboardBox) dashboardBox.style.display = 'flex';
             loadAdminLeads();
             loadAdminCases();
         } else {
-            // Logged out: Show Login, Hide Dashboard
+            // Logged out: Show Login Form, Hide Dashboard
             if (loginBox) loginBox.style.display = 'block';
             if (dashboardBox) dashboardBox.style.display = 'none';
         }
     }
 
-    // Run on initial load
+    // Run authentication check on initial script initialization
     checkAuthState();
 
-    // Admin Login form submission
+    // Admin Login form submission pipeline
     if (adminLoginForm) {
         adminLoginForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -53,32 +53,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = document.getElementById('adminPassword').value;
             const submitBtn = adminLoginForm.querySelector('button');
             
-            // Visual feedback while loading
+            // Visual feedback processing state
             const originalText = submitBtn.innerText;
             submitBtn.innerText = "Authenticating...";
             submitBtn.disabled = true;
 
-            // Simulate a brief network delay for realism
+            // Simulate brief latency window for secure handling presentation
             setTimeout(() => {
                 if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-                    // Success: Set local session
+                    // Success: Set local session state key
                     sessionStorage.setItem('isAdminLoggedIn', 'true');
                     adminLoginForm.reset();
                     checkAuthState();
                 } else {
-                    // Fail
-                    alert("Login failed! Invalid email or password.");
-                    console.error("Hardcoded Login Error: Credentials do not match.");
+                    // Mismatched security credentials fall-off
+                    alert("Login failed! Invalid administrative email or security password.");
+                    console.error("Hardcoded Login Error: Credentials do not match static safety keys.");
                 }
                 
-                // Restore button state
+                // Reset button visual feedback state
                 submitBtn.innerText = originalText;
                 submitBtn.disabled = false;
             }, 500);
         });
     }
 
-    // Admin Logout
+    // Admin Session Revocation (Logout)
     if (adminLogoutBtn) {
         adminLogoutBtn.addEventListener('click', () => {
             sessionStorage.removeItem('isAdminLoggedIn');
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 2. FRONTEND: SUBMIT LEAD FORM
+    // 2. FRONTEND: SUBMIT LEAD CONTEXT FORM
     // ==========================================
     const publicContactForm = document.getElementById('publicContactForm');
 
@@ -95,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         publicContactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            // Structure safe mapping of form element values
             const leadData = {
                 firstName: document.getElementById('leadFirstName').value,
                 lastName: document.getElementById('leadLastName').value,
@@ -107,16 +108,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const submitBtn = publicContactForm.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerText;
-            submitBtn.innerText = "Submitting...";
+            submitBtn.innerText = "Submitting Review Details...";
             submitBtn.disabled = true;
 
             try {
+                // Post object properties directly into firestore 'leads' collection
                 await addDoc(collection(db, "leads"), leadData);
                 alert("Thank you! Your case review request has been submitted successfully.");
                 publicContactForm.reset();
             } catch (error) {
-                alert("Error submitting form: " + error.message);
-                console.error("Submit Error:", error);
+                alert("Error transmitting filing review parameters: " + error.message);
+                console.error("Submit Log Error:", error);
             } finally {
                 submitBtn.innerText = originalText;
                 submitBtn.disabled = false;
@@ -125,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 3. ADMIN: LEADS MANAGEMENT & EXPORT
+    // 3. ADMIN: LEADS MANAGEMENT & EXPORT DATA
     // ==========================================
     let allLeads = []; 
 
@@ -141,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             renderLeads(allLeads);
         } catch (error) {
-            console.error("Error loading leads:", error);
+            console.error("Database breakdown loading leads collection:", error);
         }
     }
 
@@ -152,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = "";
         
         if (leadsToRender.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align: center; color: #777;'>No leads found.</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='5' style='text-align: center; color: #777;'>No matching leads logged yet.</td></tr>";
             return;
         }
 
@@ -163,13 +165,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><a href="mailto:${lead.email}" style="color: #0d6efd; text-decoration: none;">${lead.email}</a></td>
                 <td>${lead.phone}</td>
                 <td><span class="case-category">${lead.category || 'N/A'}</span></td>
-                <td style="max-width: 250px; line-height: 1.4;">${lead.message}</td>
+                <td style="max-width: 250px; line-height: 1.4; font-size: 0.9em; color:#4a5568;">${lead.message}</td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    // Filter Leads
+    // Interactive Admin Category Lead Filter Selector Switcher
     const adminLeadFilter = document.getElementById('adminLeadFilter');
     if (adminLeadFilter) {
         adminLeadFilter.addEventListener('change', (e) => {
@@ -183,12 +185,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Export Leads to CSV
+    // Export Leads Arrays Array Directly to CSV File Link Download Struct
     const exportCsvBtn = document.getElementById('exportCsvBtn');
     if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', () => {
             if (allLeads.length === 0) {
-                alert("No leads available to export.");
+                alert("No structural context data available within selected collection arrays to export.");
                 return;
             }
 
@@ -208,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.setAttribute("href", url);
-            link.setAttribute("download", `lawsuit_leads.csv`);
+            link.setAttribute("download", `lawsuit_leads_export.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -220,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     let allCases = []; 
 
-    // Add New Case
+    // Add New Case Profile record entries via form post processing mapping
     const addCaseForm = document.getElementById('addCaseForm');
     if (addCaseForm) {
         addCaseForm.addEventListener('submit', async (e) => {
@@ -234,17 +236,17 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const submitBtn = addCaseForm.querySelector('button');
-            submitBtn.innerText = "Adding...";
+            submitBtn.innerText = "Processing Addition...";
             submitBtn.disabled = true;
 
             try {
                 await addDoc(collection(db, "cases"), caseData);
-                alert("Case added successfully!");
+                alert("New investigation context data cataloged successfully!");
                 addCaseForm.reset();
                 loadAdminCases();
                 loadFrontendCases();
             } catch (error) {
-                alert("Error adding case: " + error.message);
+                alert("Error uploading parameters to Cloud Database: " + error.message);
             } finally {
                 submitBtn.innerText = "Add Case to Website";
                 submitBtn.disabled = false;
@@ -252,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Load Cases for Admin Panel
+    // Fetch array parameters rendering Admin Table listing profiles
     async function loadAdminCases() {
         try {
             const querySnapshot = await getDocs(collection(db, "cases"));
@@ -273,13 +275,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><strong>${c.title}</strong></td>
                     <td><span class="case-category">${c.category}</span></td>
                     <td>
-                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.85em; background: #dc3545;" data-id="${docSnap.id}">Delete</button>
+                        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em;" data-id="${docSnap.id}">Delete</button>
                     </td>
                 `;
                 
                 const deleteBtn = tr.querySelector('button');
                 deleteBtn.addEventListener('click', async () => {
-                    if(confirm(`Are you sure you want to delete "${c.title}"?`)) {
+                    if(confirm(`Are you certain you wish to completely wipe structural record "${c.title}" from user views?`)) {
                         await deleteDoc(doc(db, "cases", docSnap.id));
                         loadAdminCases();
                         loadFrontendCases();
@@ -289,11 +291,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 tbody.appendChild(tr);
             });
         } catch (error) {
-            console.error("Error loading admin cases:", error);
+            console.error("Error reading admin case listings portfolio mapping:", error);
         }
     }
 
-    // Load Cases for Frontend Display
+    // Load Cases context arrays formatting Frontend active directory display view grid
     async function loadFrontendCases() {
         try {
             const querySnapshot = await getDocs(collection(db, "cases"));
@@ -303,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             renderFrontendCases(allCases);
         } catch (error) {
-            console.error("Error loading frontend cases:", error);
+            console.error("Critical failure tracking active live database cases array:", error);
         }
     }
 
@@ -314,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
         list.innerHTML = "";
         
         if(casesToRender.length === 0) {
-            list.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: #777;'>No cases match your search criteria.</p>";
+            list.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: #64748b; padding: 40px 0;'>No active investigations match your query selection matrices currently.</p>";
             return;
         }
 
@@ -322,16 +324,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = "case-card";
             card.innerHTML = `
-                <span class="case-category">${c.category}</span>
-                <h3>${c.title}</h3>
-                <p>${c.description}</p>
-                <button class="btn" style="width: 100%;" onclick="document.getElementById('connect').scrollIntoView({ behavior: 'smooth' });">Check Eligibility</button>
+                <div>
+                    <span class="case-category">${c.category}</span>
+                    <h3>${c.title}</h3>
+                    <p>${c.description}</p>
+                </div>
+                <button class="btn redirect-connect-btn" style="width: 100%; margin-top: 15px;">Check Eligibility</button>
             `;
+            
+            // SPA view swap instead of old layout window scroll element targeting handles
+            card.querySelector('.redirect-connect-btn').addEventListener('click', () => {
+                if (typeof navigateToPage === "function") {
+                    navigateToPage('connect');
+                } else {
+                    window.location.hash = "connect";
+                }
+            });
+
             list.appendChild(card);
         });
     }
 
-    // Frontend Cases Search & Filter
+    // Combined input key-up and selector evaluation filtering functions
     function handleFrontendFilter() {
         const searchInput = document.getElementById('frontendSearchCases');
         const filterSelect = document.getElementById('frontendFilterCases');
@@ -360,6 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (frontendSearchInput) frontendSearchInput.addEventListener('input', handleFrontendFilter);
     if (frontendFilterSelect) frontendFilterSelect.addEventListener('change', handleFrontendFilter);
 
-    // Initial Load of Public Cases
+    // Initial query fetch execution bootstrapping user-facing cases directory module
     loadFrontendCases();
 });
