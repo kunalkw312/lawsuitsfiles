@@ -1,379 +1,389 @@
-import { db } from "./config.js";
-import { 
-    collection, 
-    addDoc, 
-    getDocs, 
-    deleteDoc,
-    doc,
-    serverTimestamp,
-    query,
-    orderBy
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// ==========================================
+// STATE MANAGEMENT & SAMPLE DATA
+// ==========================================
 
-// Ensure scripts run after DOM is fully loaded
+// Mapping of structural categories to their corresponding asset filenames
+const CATEGORY_IMAGES = {
+    "Civil Litigation": "assets/Civil Litigation.png",
+    "Criminal Cases": "assets/Criminal Cases.png",
+    "Family Law": "assets/Family Law.png",
+    "Corporate & Business Law": "assets/Corporate & Business Law.png",
+    "Personal Injury & Accident Claims": "assets/Personal Injury & Accident Claims.png"
+};
+
+// Initial/Mock database stores
+let casesData = [
+    {
+        id: "case-1",
+        title: "National Consumer Data Security Breach Litigation",
+        category: "Civil Litigation",
+        description: "Investigating corporate data infrastructure failures that exposed private identification metrics, passwords, and banking histories of millions of users without adequate safeguards."
+    },
+    {
+        id: "case-2",
+        title: "Defective Automotive Brake System Defect Investigation",
+        category: "Personal Injury & Accident Claims",
+        description: "Tracking deployment and system errors across electronic emergency brake models manufactured between 2022 and 2025 that cause unexpected lock-ups during transit."
+    },
+    {
+        id: "case-3",
+        title: "Commercial Contract Breach & Antitrust Actions",
+        category: "Corporate & Business Law",
+        description: "A class action exploration dealing with non-compete overreaches and horizontal pricing coordination structures negatively impacting independent regional suppliers."
+    }
+];
+
+let leadsData = [
+    {
+        id: "lead-1",
+        firstName: "Jane",
+        lastName: "Doe",
+        email: "jane.doe@example.com",
+        phone: "555-0199",
+        category: "Civil Litigation",
+        message: "My data was compromised in the breach last month. Received an explicit alert notice."
+    }
+];
+
+// Helper to gracefully fallback if a structural category is missing a mapped image asset
+function getCaseImage(category) {
+    return CATEGORY_IMAGES[category] || "https://via.placeholder.com/400x250?text=Legal+Case";
+}
+
+// ==========================================
+// DOM RENDER ENGINES
+// ==========================================
+
+// Renders the 3-column tile layout on the public Cases page
+function renderPublicCases() {
+    const gridContainer = document.getElementById('frontendCasesList');
+    if (!gridContainer) return;
+
+    const searchVal = document.getElementById('frontendSearchCases').value.toLowerCase();
+    const filterVal = document.getElementById('frontendFilterCases').value;
+
+    const filtered = casesData.filter(item => {
+        const matchesSearch = item.title.toLowerCase().includes(searchVal) || 
+                              item.description.toLowerCase().includes(searchVal);
+        const matchesCategory = (filterVal === 'All' || item.category === filterVal);
+        return matchesSearch && matchesCategory;
+    });
+
+    if (filtered.length === 0) {
+        gridContainer.innerHTML = `<p style="grid-column: span 3; text-align: center; color: #64748b; padding: 40px 0;">No active cases matched your selected parameters.</p>`;
+        return;
+    }
+
+    gridContainer.innerHTML = filtered.map(item => `
+        <div class="case-card" data-id="${item.id}">
+            <div class="case-img-wrap">
+                <img src="${getCaseImage(item.category)}" alt="${item.category}" onerror="this.src='https://via.placeholder.com/400x250?text=Legal+Case'">
+            </div>
+            <div class="case-card-body">
+                <span class="case-category">${item.category}</span>
+                <h3>${item.title}</h3>
+                <p>${item.description.substring(0, 140)}${item.description.length > 140 ? '...' : ''}</p>
+                <div class="case-btn-group">
+                    <button class="btn btn-view-detail" data-id="${item.id}">View Detail</button>
+                    <button class="btn btn-secondary btn-tile-contact" data-category="${item.category}">Contact Us</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Attach explicit click event interceptors to newly rendered tile buttons
+    gridContainer.querySelectorAll('.btn-view-detail').forEach(btn => {
+        btn.addEventListener('click', () => showCaseDetailPage(btn.getAttribute('data-id')));
+    });
+
+    gridContainer.querySelectorAll('.btn-tile-contact').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const cat = btn.getAttribute('data-category');
+            forwardToContactWithCategory(cat);
+        });
+    });
+}
+
+// Transitions views to show a specific case in detail and pre-fills its inline form
+function showCaseDetailPage(caseId) {
+    const caseObj = casesData.find(c => c.id === caseId);
+    if (!caseObj) return;
+
+    const detailsContainer = document.getElementById('dynamicCaseDetailContainer');
+    if (!detailsContainer) return;
+
+    // Inject matching dynamic view content
+    detailsContainer.innerHTML = `
+        <div class="details-banner">
+            <img src="${getCaseImage(caseObj.category)}" alt="${caseObj.category}" onerror="this.src='https://via.placeholder.com/1100x380?text=Investigation+Banner'">
+        </div>
+        <div class="details-content">
+            <span class="case-category" style="margin-bottom: 15px;">${caseObj.category}</span>
+            <h1>${caseObj.title}</h1>
+            <div class="full-description">${caseObj.description}</div>
+        </div>
+    `;
+
+    // Pre-select category configuration on the internal dynamic inline contact form
+    const inlineSelect = document.getElementById('inlineCaseContactForm').querySelector('select');
+    if (inlineSelect) {
+        inlineSelect.value = caseObj.category;
+    }
+
+    // Trigger explicit single page container routing transition
+    if (typeof window.navigateToPage === 'function') {
+        window.navigateToPage('case-details');
+    }
+}
+
+// Redirects and sets categories for standard global actions
+function forwardToContactWithCategory(categoryName) {
+    const publicSelect = document.getElementById('leadCategory');
+    if (publicSelect) {
+        publicSelect.value = categoryName;
+    }
+    if (typeof window.navigateToPage === 'function') {
+        window.navigateToPage('connect');
+    }
+}
+
+// Renders Management Data inside Admin Panels
+function renderAdminDashboard() {
+    // 1. Render Admin Incoming Leads
+    const leadsTableBody = document.querySelector('#adminLeadsTable tbody');
+    const leadFilter = document.getElementById('adminLeadFilter').value;
+    
+    if (leadsTableBody) {
+        const filteredLeads = leadsData.filter(l => leadFilter === 'All' || l.category === leadFilter);
+        
+        if (filteredLeads.length === 0) {
+            leadsTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No lead records stored.</td></tr>`;
+        } else {
+            leadsTableBody.innerHTML = filteredLeads.map(l => `
+                <tr>
+                    <td><strong>${l.firstName} ${l.lastName}</strong></td>
+                    <td><a href="mailto:${l.email}">${l.email}</a></td>
+                    <td>${l.phone}</td>
+                    <td><span class="case-category" style="background:#475569">${l.category}</span></td>
+                    <td style="font-size:0.9em; max-width: 300px; white-space: pre-wrap;">${l.message}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // 2. Render Admin Active Case Manager Rows (with Edit buttons)
+    const casesTableBody = document.querySelector('#adminCasesTable tbody');
+    if (casesTableBody) {
+        if (casesData.length === 0) {
+            casesTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8;">No dynamic cases posted.</td></tr>`;
+        } else {
+            casesTableBody.innerHTML = casesData.map(c => `
+                <tr>
+                    <td><strong>${c.title}</strong></td>
+                    <td><span class="case-category" style="background:#0f172a">${c.category}</span></td>
+                    <td>
+                        <div style="display:flex; gap: 8px;">
+                            <button class="btn btn-warning btn-admin-edit" data-id="${c.id}" style="padding: 6px 12px; font-size: 0.85em;">Edit</button>
+                            <button class="btn btn-danger btn-admin-delete" data-id="${c.id}" style="padding: 6px 12px; font-size: 0.85em;">Delete</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Hook operational handlers back onto Admin Table controllers
+        casesTableBody.querySelectorAll('.btn-admin-edit').forEach(btn => {
+            btn.addEventListener('click', () => loadCaseIntoAdminForm(btn.getAttribute('data-id')));
+        });
+        casesTableBody.querySelectorAll('.btn-admin-delete').forEach(btn => {
+            btn.addEventListener('click', () => deleteCaseTracker(btn.getAttribute('data-id')));
+        });
+    }
+}
+
+// ==========================================
+// ADMIN PANEL CRUD OPERATIONS
+// ==========================================
+
+// Pre-populates the admin form with structural variables to process modifications
+function loadCaseIntoAdminForm(caseId) {
+    const targetCase = casesData.find(c => c.id === caseId);
+    if (!targetCase) return;
+
+    // Shift text inputs to reflect edit status
+    document.getElementById('editCaseTargetId').value = targetCase.id;
+    document.getElementById('newCaseTitle').value = targetCase.title;
+    document.getElementById('newCaseCategory').value = targetCase.category;
+    document.getElementById('newCaseDesc').value = targetCase.description;
+
+    document.getElementById('adminFormHeadline').innerText = "⚡ Edit Case Parameters Mode";
+    document.getElementById('adminFormSubmitBtn').innerText = "Save Modified Changes";
+    document.getElementById('adminFormSubmitBtn').className = "btn btn-warning";
+    document.getElementById('cancelEditCaseBtn').style.display = "inline-block";
+
+    // Smooth scroll up within the modal environment directly to the form element
+    document.getElementById('addCaseForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Reverts the Admin Form from Editing back to Standard Creation
+function clearAdminCaseFormState() {
+    document.getElementById('editCaseTargetId').value = "";
+    document.getElementById('addCaseForm').reset();
+    
+    document.getElementById('adminFormHeadline').innerText = "Add New Case Investigation";
+    document.getElementById('adminFormSubmitBtn').innerText = "Add Case to Website";
+    document.getElementById('adminFormSubmitBtn').className = "btn";
+    document.getElementById('cancelEditCaseBtn').style.display = "none";
+}
+
+// Disposes of an unwanted case listing row
+function deleteCaseTracker(caseId) {
+    if (confirm("Are you sure you want to completely erase this case profile from the tracking records?")) {
+        casesData = casesData.filter(c => c.id !== caseId);
+        
+        // Reset processing forms if active target is deleted mid-flight
+        if(document.getElementById('editCaseTargetId').value === caseId) {
+            clearAdminCaseFormState();
+        }
+
+        renderAdminDashboard();
+        renderPublicCases();
+    }
+}
+
+// CSV Export Utility for Administrative Logs
+function exportLeadsToCSV() {
+    if (leadsData.length === 0) {
+        alert("There is no structural data inside the collection to build a download output payload.");
+        return;
+    }
+    
+    let csvContent = "data:text/csv;charset=utf-8,First Name,Last Name,Email,Phone,Category,Message\n";
+    leadsData.forEach(l => {
+        let cleanMsg = l.message.replace(/"/g, '""');
+        csvContent += `"${l.firstName}","${l.lastName}","${l.email}","${l.phone}","${l.category}","${cleanMsg}"\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", encodedUri);
+    downloadAnchor.setAttribute("download", `lawsuitfiles_leads_export_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    document.body.removeChild(downloadAnchor);
+}
+
+// ==========================================
+// EVENT CONTROLLER BINDINGS
+// ==========================================
+
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ==========================================
-    // 1. AUTHENTICATION (HARDCODED) & ADMIN UI
-    // ==========================================
-    const loginBox = document.getElementById('adminLoginBox');
-    const dashboardBox = document.getElementById('adminDashboardBox');
-    const adminLoginForm = document.getElementById('adminLoginForm');
-    const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+    // 1. Live Filtering Inputs
+    document.getElementById('frontendSearchCases').addEventListener('input', renderPublicCases);
+    document.getElementById('frontendFilterCases').addEventListener('change', renderPublicCases);
+    document.getElementById('adminLeadFilter').addEventListener('change', renderAdminDashboard);
+    document.getElementById('exportCsvBtn').addEventListener('click', exportLeadsToCSV);
+    
+    // Cancel editing context trigger
+    document.getElementById('cancelEditCaseBtn').addEventListener('click', clearAdminCaseFormState);
 
-    // Hardcoded Admin Credentials
-    const ADMIN_EMAIL = "admin@gmail.com";
-    const ADMIN_PASSWORD = "admin1234";
+    // 2. Public Multi-Page Form Ingest Interceptors
+    document.getElementById('publicContactForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newLead = {
+            id: 'lead-' + Date.now(),
+            firstName: document.getElementById('leadFirstName').value,
+            lastName: document.getElementById('leadLastName').value,
+            email: document.getElementById('leadEmail').value,
+            phone: document.getElementById('leadPhone').value,
+            category: document.getElementById('leadCategory').value,
+            message: document.getElementById('leadMessage').value
+        };
+        leadsData.push(newLead);
+        this.reset();
+        alert("Your secure information profile has been registered. Evaluation networks are updating.");
+        renderAdminDashboard();
+    });
 
-    // Check Auth State using sessionStorage instead of Firebase Auth
-    function checkAuthState() {
-        const isLoggedIn = sessionStorage.getItem('isAdminLoggedIn');
-        if (isLoggedIn === 'true') {
-            // Logged in: Show Dashboard, Hide Login Form
-            if (loginBox) loginBox.style.display = 'none';
-            if (dashboardBox) dashboardBox.style.display = 'flex';
-            loadAdminLeads();
-            loadAdminCases();
+    document.getElementById('inlineCaseContactForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newLead = {
+            id: 'lead-' + Date.now(),
+            firstName: document.getElementById('inlineLeadFirstName').value,
+            lastName: document.getElementById('inlineLeadLastName').value,
+            email: document.getElementById('inlineLeadEmail').value,
+            phone: document.getElementById('inlineLeadPhone').value,
+            category: document.getElementById('inlineLeadCategory').value,
+            message: document.getElementById('inlineLeadMessage').value
+        };
+        leadsData.push(newLead);
+        this.reset();
+        alert("Your targeted case information request has been logged successfully.");
+        renderAdminDashboard();
+        window.navigateToPage('cases');
+    });
+
+    // 3. Admin Security Processing Form
+    document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const email = document.getElementById('adminEmail').value.trim();
+        const password = document.getElementById('adminPassword').value.trim();
+
+        if (email === "admin@gmail.com" && password === "admin1234") {
+            document.getElementById('adminLoginBox').style.display = 'none';
+            document.getElementById('adminDashboardBox').style.display = 'flex';
+            renderAdminDashboard();
         } else {
-            // Logged out: Show Login Form, Hide Dashboard
-            if (loginBox) loginBox.style.display = 'block';
-            if (dashboardBox) dashboardBox.style.display = 'none';
+            alert("Invalid clearance credentials. Authentication refused.");
         }
-    }
+    });
 
-    // Run authentication check on initial script initialization
-    checkAuthState();
+    // 4. Admin Session Termination (Logout)
+    document.getElementById('adminLogoutBtn').addEventListener('click', () => {
+        document.getElementById('adminLoginForm').reset();
+        clearAdminCaseFormState();
+        document.getElementById('adminDashboardBox').style.display = 'none';
+        document.getElementById('adminLoginBox').style.display = 'block';
+        document.getElementById('adminOverlay').style.display = 'none';
+    });
 
-    // Admin Login form submission pipeline
-    if (adminLoginForm) {
-        adminLoginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('adminEmail').value;
-            const password = document.getElementById('adminPassword').value;
-            const submitBtn = adminLoginForm.querySelector('button');
-            
-            // Visual feedback processing state
-            const originalText = submitBtn.innerText;
-            submitBtn.innerText = "Authenticating...";
-            submitBtn.disabled = true;
+    // 5. Shared Case Creation & Modification Submissions Tracker
+    document.getElementById('addCaseForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const targetId = document.getElementById('editCaseTargetId').value;
+        const titleVal = document.getElementById('newCaseTitle').value;
+        const catVal = document.getElementById('newCaseCategory').value;
+        const descVal = document.getElementById('newCaseDesc').value;
 
-            // Simulate brief latency window for secure handling presentation
-            setTimeout(() => {
-                if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-                    // Success: Set local session state key
-                    sessionStorage.setItem('isAdminLoggedIn', 'true');
-                    adminLoginForm.reset();
-                    checkAuthState();
-                } else {
-                    // Mismatched security credentials fall-off
-                    alert("Login failed! Invalid administrative email or security password.");
-                    console.error("Hardcoded Login Error: Credentials do not match static safety keys.");
-                }
-                
-                // Reset button visual feedback state
-                submitBtn.innerText = originalText;
-                submitBtn.disabled = false;
-            }, 500);
-        });
-    }
-
-    // Admin Session Revocation (Logout)
-    if (adminLogoutBtn) {
-        adminLogoutBtn.addEventListener('click', () => {
-            sessionStorage.removeItem('isAdminLoggedIn');
-            checkAuthState();
-        });
-    }
-
-    // ==========================================
-    // 2. FRONTEND: SUBMIT LEAD CONTEXT FORM
-    // ==========================================
-    const publicContactForm = document.getElementById('publicContactForm');
-
-    if (publicContactForm) {
-        publicContactForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // Structure safe mapping of form element values
-            const leadData = {
-                firstName: document.getElementById('leadFirstName').value,
-                lastName: document.getElementById('leadLastName').value,
-                email: document.getElementById('leadEmail').value,
-                phone: document.getElementById('leadPhone').value,
-                category: document.getElementById('leadCategory').value,
-                message: document.getElementById('leadMessage').value,
-                timestamp: serverTimestamp()
+        if (targetId) {
+            // Processing Modification Update Path
+            const idx = casesData.findIndex(c => c.id === targetId);
+            if(idx !== -1) {
+                casesData[idx].title = titleVal;
+                casesData[idx].category = catVal;
+                casesData[idx].description = descVal;
+                alert("Case variables modified correctly.");
+            }
+            clearAdminCaseFormState();
+        } else {
+            // Processing New Entry Target Path
+            const newCase = {
+                id: 'case-' + Date.now(),
+                title: titleVal,
+                category: catVal,
+                description: descVal
             };
-
-            const submitBtn = publicContactForm.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerText;
-            submitBtn.innerText = "Submitting Review Details...";
-            submitBtn.disabled = true;
-
-            try {
-                // Post object properties directly into firestore 'leads' collection
-                await addDoc(collection(db, "leads"), leadData);
-                alert("Thank you! Your case review request has been submitted successfully.");
-                publicContactForm.reset();
-            } catch (error) {
-                alert("Error transmitting filing review parameters: " + error.message);
-                console.error("Submit Log Error:", error);
-            } finally {
-                submitBtn.innerText = originalText;
-                submitBtn.disabled = false;
-            }
-        });
-    }
-
-    // ==========================================
-    // 3. ADMIN: LEADS MANAGEMENT & EXPORT DATA
-    // ==========================================
-    let allLeads = []; 
-
-    async function loadAdminLeads() {
-        try {
-            const q = query(collection(db, "leads"), orderBy("timestamp", "desc"));
-            const querySnapshot = await getDocs(q);
-            
-            allLeads = [];
-            querySnapshot.forEach((doc) => {
-                allLeads.push({ id: doc.id, ...doc.data() });
-            });
-            
-            renderLeads(allLeads);
-        } catch (error) {
-            console.error("Database breakdown loading leads collection:", error);
-        }
-    }
-
-    function renderLeads(leadsToRender) {
-        const tbody = document.querySelector("#adminLeadsTable tbody");
-        if (!tbody) return;
-
-        tbody.innerHTML = "";
-        
-        if (leadsToRender.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align: center; color: #777;'>No matching leads logged yet.</td></tr>";
-            return;
+            casesData.push(newCase);
+            this.reset();
+            alert("New investigation route listed successfully.");
         }
 
-        leadsToRender.forEach(lead => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${lead.firstName} ${lead.lastName}</strong></td>
-                <td><a href="mailto:${lead.email}" style="color: #0d6efd; text-decoration: none;">${lead.email}</a></td>
-                <td>${lead.phone}</td>
-                <td><span class="case-category">${lead.category || 'N/A'}</span></td>
-                <td style="max-width: 250px; line-height: 1.4; font-size: 0.9em; color:#4a5568;">${lead.message}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
+        renderAdminDashboard();
+        renderPublicCases();
+    });
 
-    // Interactive Admin Category Lead Filter Selector Switcher
-    const adminLeadFilter = document.getElementById('adminLeadFilter');
-    if (adminLeadFilter) {
-        adminLeadFilter.addEventListener('change', (e) => {
-            const category = e.target.value;
-            if (category === "All") {
-                renderLeads(allLeads);
-            } else {
-                const filtered = allLeads.filter(lead => lead.category === category);
-                renderLeads(filtered);
-            }
-        });
-    }
-
-    // Export Leads Arrays Array Directly to CSV File Link Download Struct
-    const exportCsvBtn = document.getElementById('exportCsvBtn');
-    if (exportCsvBtn) {
-        exportCsvBtn.addEventListener('click', () => {
-            if (allLeads.length === 0) {
-                alert("No structural context data available within selected collection arrays to export.");
-                return;
-            }
-
-            const headers = ["First Name", "Last Name", "Email", "Phone", "Category", "Message"];
-            const rows = allLeads.map(lead => [
-                `"${lead.firstName || ''}"`,
-                `"${lead.lastName || ''}"`,
-                `"${lead.email || ''}"`,
-                `"${lead.phone || ''}"`,
-                `"${lead.category || ''}"`,
-                `"${(lead.message || '').replace(/"/g, '""')}"`
-            ]);
-            
-            const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `lawsuit_leads_export.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-    }
-
-    // ==========================================
-    // 4. ADMIN & FRONTEND: CASES MANAGEMENT
-    // ==========================================
-    let allCases = []; 
-
-    // Add New Case Profile record entries via form post processing mapping
-    const addCaseForm = document.getElementById('addCaseForm');
-    if (addCaseForm) {
-        addCaseForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const caseData = {
-                title: document.getElementById('newCaseTitle').value,
-                category: document.getElementById('newCaseCategory').value,
-                description: document.getElementById('newCaseDesc').value,
-                timestamp: serverTimestamp()
-            };
-
-            const submitBtn = addCaseForm.querySelector('button');
-            submitBtn.innerText = "Processing Addition...";
-            submitBtn.disabled = true;
-
-            try {
-                await addDoc(collection(db, "cases"), caseData);
-                alert("New investigation context data cataloged successfully!");
-                addCaseForm.reset();
-                loadAdminCases();
-                loadFrontendCases();
-            } catch (error) {
-                alert("Error uploading parameters to Cloud Database: " + error.message);
-            } finally {
-                submitBtn.innerText = "Add Case to Website";
-                submitBtn.disabled = false;
-            }
-        });
-    }
-
-    // Fetch array parameters rendering Admin Table listing profiles
-    async function loadAdminCases() {
-        try {
-            const querySnapshot = await getDocs(collection(db, "cases"));
-            const tbody = document.querySelector("#adminCasesTable tbody");
-            if (!tbody) return;
-            
-            tbody.innerHTML = "";
-            
-            if (querySnapshot.empty) {
-                tbody.innerHTML = "<tr><td colspan='3' style='text-align: center; color: #777;'>No cases added yet.</td></tr>";
-                return;
-            }
-
-            querySnapshot.forEach((docSnap) => {
-                const c = docSnap.data();
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${c.title}</strong></td>
-                    <td><span class="case-category">${c.category}</span></td>
-                    <td>
-                        <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em;" data-id="${docSnap.id}">Delete</button>
-                    </td>
-                `;
-                
-                const deleteBtn = tr.querySelector('button');
-                deleteBtn.addEventListener('click', async () => {
-                    if(confirm(`Are you certain you wish to completely wipe structural record "${c.title}" from user views?`)) {
-                        await deleteDoc(doc(db, "cases", docSnap.id));
-                        loadAdminCases();
-                        loadFrontendCases();
-                    }
-                });
-                
-                tbody.appendChild(tr);
-            });
-        } catch (error) {
-            console.error("Error reading admin case listings portfolio mapping:", error);
-        }
-    }
-
-    // Load Cases context arrays formatting Frontend active directory display view grid
-    async function loadFrontendCases() {
-        try {
-            const querySnapshot = await getDocs(collection(db, "cases"));
-            allCases = [];
-            querySnapshot.forEach((doc) => {
-                allCases.push(doc.data());
-            });
-            renderFrontendCases(allCases);
-        } catch (error) {
-            console.error("Critical failure tracking active live database cases array:", error);
-        }
-    }
-
-    function renderFrontendCases(casesToRender) {
-        const list = document.getElementById('frontendCasesList');
-        if (!list) return;
-        
-        list.innerHTML = "";
-        
-        if(casesToRender.length === 0) {
-            list.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: #64748b; padding: 40px 0;'>No active investigations match your query selection matrices currently.</p>";
-            return;
-        }
-
-        casesToRender.forEach(c => {
-            const card = document.createElement('div');
-            card.className = "case-card";
-            card.innerHTML = `
-                <div>
-                    <span class="case-category">${c.category}</span>
-                    <h3>${c.title}</h3>
-                    <p>${c.description}</p>
-                </div>
-                <button class="btn redirect-connect-btn" style="width: 100%; margin-top: 15px;">Check Eligibility</button>
-            `;
-            
-            // SPA view swap instead of old layout window scroll element targeting handles
-            card.querySelector('.redirect-connect-btn').addEventListener('click', () => {
-                if (typeof navigateToPage === "function") {
-                    navigateToPage('connect');
-                } else {
-                    window.location.hash = "connect";
-                }
-            });
-
-            list.appendChild(card);
-        });
-    }
-
-    // Combined input key-up and selector evaluation filtering functions
-    function handleFrontendFilter() {
-        const searchInput = document.getElementById('frontendSearchCases');
-        const filterSelect = document.getElementById('frontendFilterCases');
-        
-        if (!searchInput || !filterSelect) return;
-
-        const searchTerm = searchInput.value.toLowerCase();
-        const filterCategory = filterSelect.value;
-
-        const filtered = allCases.filter(c => {
-            const titleSafe = (c.title || "").toLowerCase();
-            const descSafe = (c.description || "").toLowerCase();
-            
-            const matchesSearch = titleSafe.includes(searchTerm) || descSafe.includes(searchTerm);
-            const matchesCategory = (filterCategory === "All") || (c.category === filterCategory);
-            
-            return matchesSearch && matchesCategory;
-        });
-
-        renderFrontendCases(filtered);
-    }
-
-    const frontendSearchInput = document.getElementById('frontendSearchCases');
-    const frontendFilterSelect = document.getElementById('frontendFilterCases');
-
-    if (frontendSearchInput) frontendSearchInput.addEventListener('input', handleFrontendFilter);
-    if (frontendFilterSelect) frontendFilterSelect.addEventListener('change', handleFrontendFilter);
-
-    // Initial query fetch execution bootstrapping user-facing cases directory module
-    loadFrontendCases();
+    // Run foundational executions on boot
+    renderPublicCases();
 });
