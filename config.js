@@ -5,12 +5,13 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebas
 
 // TODO: Replace with your actual Firebase configuration object
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCq0fxtwd3RFRTLiLat1xzS4l_wWvTwOPo",
+  authDomain: "lawsuitfiles-9e413.firebaseapp.com",
+  projectId: "lawsuitfiles-9e413",
+  storageBucket: "lawsuitfiles-9e413.firebasestorage.app",
+  messagingSenderId: "219336060049",
+  appId: "1:219336060049:web:8bbbe9762f1ff58c6a2330",
+  measurementId: "G-HP8FRFDBRW"
 };
 
 // Initialize Firebase
