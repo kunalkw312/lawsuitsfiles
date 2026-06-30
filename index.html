@@ -202,7 +202,6 @@
 </head>
 <body>
 
-    <!-- ================= HEADER ================= -->
     <header>
         <div class="logo" onclick="navigateToPage('home')">
             <img src="assets/logo.png" alt="LawsuitFiles Logo" onerror="this.src='https://via.placeholder.com/45x45'">
@@ -217,9 +216,6 @@
         <button class="btn" onclick="navigateToPage('connect')">Get Started</button>
     </header>
 
-    <!-- ========================================== -->
-    <!-- HOME PAGE -->
-    <!-- ========================================== -->
     <main id="homePage" class="page-content active">
         <section class="hero">
             <div class="hero-text">
@@ -265,9 +261,6 @@
         </section>
     </main>
 
-    <!-- ========================================== -->
-    <!-- CASES PAGE -->
-    <!-- ========================================== -->
     <main id="casesPage" class="page-content">
         <section class="cases-section">
             <div class="section-header">
@@ -287,7 +280,6 @@
                 </select>
             </div>
 
-            <!-- 3-Column Tile Grid Destination managed dynamically via app.js -->
             <div class="cases-grid" id="frontendCasesList"></div>
         </section>
 
@@ -313,54 +305,15 @@
         </section>
     </main>
 
-    <!-- ========================================== -->
-    <!-- DYNAMIC CASE DETAIL VIEW PAGE -->
-    <!-- ========================================== -->
     <main id="caseDetailsPage" class="page-content">
         <div class="details-wrapper">
             <a class="back-link" onclick="navigateToPage('cases')">← Back to Cases Directory</a>
             
             <div class="details-hero" id="dynamicCaseDetailContainer">
-                <!-- Content injected via app.js selection map -->
-            </div>
-
-            <div class="section-header" style="margin-top: 60px; margin-bottom: 30px;">
-                <h2>Case Inquiry Questionnaire</h2>
-                <p>Submit your event variables beneath this tracking window to establish preliminary eligibility status indices.</p>
-            </div>
-            
-            <!-- Embedded Contact Form at end of details page -->
-            <div class="form-wrapper" style="padding: 0; background: none;">
-                <form class="contact-form" id="inlineCaseContactForm">
-                    <input type="text" id="inlineLeadFirstName" placeholder="First Name" required>
-                    <input type="text" id="inlineLeadLastName" placeholder="Last Name" required>
-                    <input type="email" id="inlineLeadEmail" placeholder="Email Address" required>
-                    <input type="tel" id="inlineLeadPhone" placeholder="Phone / Mobile Contact Number" required>
-                    
-                    <select id="inlineLeadCategory" class="full-width" required>
-                        <option value="">-- Select Legal Category Regulating Your Case --</option>
-                        <option value="Civil Litigation">Civil Litigation</option>
-                        <option value="Criminal Cases">Criminal Cases</option>
-                        <option value="Family Law">Family Law</option>
-                        <option value="Corporate & Business Law">Corporate & Business Law</option>
-                        <option value="Personal Injury & Accident Claims">Personal Injury & Accident Claims</option>
-                    </select>
-
-                    <textarea id="inlineLeadMessage" rows="6" placeholder="Provide accurate event descriptions, product names, diagnosis records, or critical date timelines..." required></textarea>
-                    
-                    <label class="checkbox-label">
-                        <input type="checkbox" required>
-                        I authorize vetted network legal partners to contact me using electronic communication tools regarding this specific review entry.
-                    </label>
-                    <button class="btn" type="submit">Submit Case Evaluation Details</button>
-                </form>
-            </div>
+                </div>
         </div>
     </main>
 
-    <!-- ========================================== -->
-    <!-- ABOUT PAGE -->
-    <!-- ========================================== -->
     <main id="aboutPage" class="page-content">
         <section class="hero">
             <div class="hero-text">
@@ -408,20 +361,17 @@
         </section>
     </main>
 
-    <!-- ========================================== -->
-    <!-- CONNECT PAGE -->
-    <!-- ========================================== -->
     <main id="connectPage" class="page-content">
         <section class="section-header" style="margin-top: 50px; margin-bottom: 20px;">
-            <h2>Initiate Your Free Case Evaluation</h2>
-            <p>Fill out the encrypted administrative questionnaire profile below. Legal professionals require clear primary fields to verify standard statutory limitations frameworks accurately.</p>
+            <h2>How It Works</h2>
+            <p>Before submitting the secure intake form below, review our standard evaluation pipeline process.</p>
         </section>
 
         <div class="process-container">
             <div class="process-step">
                 <div class="step-number">1</div>
                 <h4>Complete Request</h4>
-                <p>Provide contact variables and explicit product/accident details safely.</p>
+                <p>Provide contact variables and explicit product/accident details safely via the form below.</p>
             </div>
             <div class="process-step">
                 <div class="step-number">2</div>
@@ -434,37 +384,38 @@
                 <p>Vetted partner attorney networks follow up directly if parameters show viability.</p>
             </div>
         </div>
-
-        <div class="form-wrapper">
-            <form class="contact-form" id="publicContactForm">
-                <input type="text" id="leadFirstName" placeholder="First Name" required>
-                <input type="text" id="leadLastName" placeholder="Last Name" required>
-                <input type="email" id="leadEmail" placeholder="Email Address" required>
-                <input type="tel" id="leadPhone" placeholder="Phone / Mobile Contact Number" required>
-                
-                <select id="leadCategory" class="full-width" required>
-                    <option value="">-- Select Legal Category Regulating Your Case --</option>
-                    <option value="Civil Litigation">Civil Litigation</option>
-                    <option value="Criminal Cases">Criminal Cases</option>
-                    <option value="Family Law">Family Law</option>
-                    <option value="Corporate & Business Law">Corporate & Business Law</option>
-                    <option value="Personal Injury & Accident Claims">Personal Injury & Accident Claims</option>
-                </select>
-
-                <textarea id="leadMessage" rows="6" placeholder="Provide accurate event descriptions, product names, diagnosis records, or critical date timelines..." required></textarea>
-                
-                <label class="checkbox-label">
-                    <input type="checkbox" required>
-                    I authorize vetted network legal partners to call or text me using electronic communication tools regarding this review entry.
-                </label>
-                <button class="btn" type="submit">Submit Secure Consultation Request</button>
-            </form>
-        </div>
     </main>
 
-    <!-- ========================================== -->
-    <!-- FOOTER SECTION -->
-    <!-- ========================================== -->
+    <div class="form-wrapper" id="globalContactSection">
+        <div class="section-header" style="margin-bottom: 30px;">
+            <h2>Initiate Your Free Case Evaluation</h2>
+            <p>Submit your event variables beneath this tracking window to establish preliminary eligibility status indices. Legal professionals require clear primary fields to verify standard statutory limitations frameworks accurately.</p>
+        </div>
+        <form class="contact-form" id="globalContactForm">
+            <input type="text" id="globalLeadFirstName" placeholder="First Name" required>
+            <input type="text" id="globalLeadLastName" placeholder="Last Name" required>
+            <input type="email" id="globalLeadEmail" placeholder="Email Address" required>
+            <input type="tel" id="globalLeadPhone" placeholder="Phone / Mobile Contact Number" required>
+            
+            <select id="globalLeadCategory" class="full-width" required>
+                <option value="">-- Select Legal Category Regulating Your Case --</option>
+                <option value="Civil Litigation">Civil Litigation</option>
+                <option value="Criminal Cases">Criminal Cases</option>
+                <option value="Family Law">Family Law</option>
+                <option value="Corporate & Business Law">Corporate & Business Law</option>
+                <option value="Personal Injury & Accident Claims">Personal Injury & Accident Claims</option>
+            </select>
+
+            <textarea id="globalLeadMessage" rows="6" placeholder="Provide accurate event descriptions, product names, diagnosis records, or critical date timelines..." required></textarea>
+            
+            <label class="checkbox-label">
+                <input type="checkbox" required>
+                I authorize vetted network legal partners to call or text me using electronic communication tools regarding this review entry.
+            </label>
+            <button class="btn" type="submit">Submit Secure Consultation Request</button>
+        </form>
+    </div>
+
     <footer>
         <div class="footer-container">
             <div>
@@ -494,9 +445,9 @@
             </div>
             <div>
                 <h3>CONTACT DETAILS</h3>
-                <p>Tel Support: +1 (555) 000-0000</p>
-                <p>✉ Queries: legal@lawsuitfiles.com</p>
-                <p>📍 Intake: New York, United States</p>
+                <p id="footerTel">Tel Support: +1 (555) 000-0000</p>
+                <p id="footerEmail">✉ Queries: legal@lawsuitfiles.com</p>
+                <p id="footerAddress">📍 Intake: New York, United States</p>
             </div>
         </div>
         <div class="footer-bottom">
@@ -506,12 +457,8 @@
         <button id="openAdminModalBtn" class="admin-trigger">Admin Panel</button>
     </footer>
 
-    <!-- ========================================== -->
-    <!-- ADMIN OVERLAY & PANELS -->
-    <!-- ========================================== -->
     <div id="adminOverlay">
         
-        <!-- Clean, Modern Admin Entry Box Layout -->
         <div class="login-box" id="adminLoginBox">
             <button class="close-login-container" id="closeLoginBtn">&times;</button>
             <h2>Admin Login</h2>
@@ -523,13 +470,13 @@
             </form>
         </div>
 
-        <!-- Dashboard Control Box -->
         <div class="admin-dashboard" id="adminDashboardBox" style="display: none;">
             <header class="admin-header">
                 <h2>⚖️ Admin Dashboard</h2>
                 <div class="admin-nav">
                     <button class="active" id="tabLeadsBtn">View Leads</button>
                     <button id="tabCasesBtn">Manage Cases</button>
+                    <button id="tabSettingsBtn">Settings</button>
                     <button class="logout-btn" id="adminLogoutBtn">Logout</button>
                 </div>
                 <button class="close-dashboard-btn" id="closeDashboardBtn">&times;</button>
@@ -537,7 +484,6 @@
 
             <main class="admin-body">
                 
-                <!-- Lead Log Display -->
                 <div id="leadsSection">
                     <div class="dashboard-header-flex">
                         <h3>Submitted Form Leads</h3>
@@ -567,7 +513,6 @@
                     </table>
                 </div>
 
-                <!-- Case Manager Controls (Combined Add/Edit Framework) -->
                 <div id="casesSection" style="display: none;">
                     <div class="dashboard-header-flex">
                         <h3 id="adminFormHeadline">Add New Case Investigation</h3>
@@ -575,7 +520,6 @@
                     </div>
                     
                     <form class="admin-form" id="addCaseForm" style="margin-bottom: 40px;">
-                        <!-- Hidden variable storing target ID during edit tracking updates -->
                         <input type="hidden" id="editCaseTargetId" value="">
                         
                         <input type="text" id="newCaseTitle" placeholder="Case Title" required>
@@ -603,13 +547,29 @@
                         <tbody></tbody>
                     </table>
                 </div>
+
+                <div id="settingsSection" style="display: none;">
+                    <div class="dashboard-header-flex">
+                        <h3>Update Platform Contact Details</h3>
+                    </div>
+                    <form class="admin-form" id="updateSettingsForm">
+                        <label for="settingTel" style="font-weight: 600; color: #334155;">Telephone Support Number</label>
+                        <input type="text" id="settingTel" placeholder="e.g. +1 (555) 000-0000" required>
+                        
+                        <label for="settingEmail" style="font-weight: 600; color: #334155; margin-top: 10px;">Primary Support Email</label>
+                        <input type="email" id="settingEmail" placeholder="e.g. legal@lawsuitfiles.com" required>
+                        
+                        <label for="settingAddress" style="font-weight: 600; color: #334155; margin-top: 10px;">Physical Intake Address</label>
+                        <input type="text" id="settingAddress" placeholder="e.g. New York, United States" required>
+                        
+                        <button type="submit" class="btn" style="margin-top: 15px;">Save Updates Globally</button>
+                    </form>
+                </div>
+
             </main>
         </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- INTERACTION LOGIC SCRIPT -->
-    <!-- ========================================== -->
     <script>
         // SPA Routing Controller Function
         function navigateToPage(pageId) {
@@ -666,18 +626,29 @@
         document.getElementById('tabLeadsBtn').addEventListener('click', function() {
             this.classList.add('active');
             document.getElementById('tabCasesBtn').classList.remove('active');
+            document.getElementById('tabSettingsBtn').classList.remove('active');
             document.getElementById('leadsSection').style.display = 'block';
             document.getElementById('casesSection').style.display = 'none';
+            document.getElementById('settingsSection').style.display = 'none';
         });
         document.getElementById('tabCasesBtn').addEventListener('click', function() {
             this.classList.add('active');
             document.getElementById('tabLeadsBtn').classList.remove('active');
+            document.getElementById('tabSettingsBtn').classList.remove('active');
             document.getElementById('casesSection').style.display = 'block';
+            document.getElementById('leadsSection').style.display = 'none';
+            document.getElementById('settingsSection').style.display = 'none';
+        });
+        document.getElementById('tabSettingsBtn').addEventListener('click', function() {
+            this.classList.add('active');
+            document.getElementById('tabLeadsBtn').classList.remove('active');
+            document.getElementById('tabCasesBtn').classList.remove('active');
+            document.getElementById('settingsSection').style.display = 'block';
+            document.getElementById('casesSection').style.display = 'none';
             document.getElementById('leadsSection').style.display = 'none';
         });
     </script>
 
-    <!-- Connect script linking up foundational database operations code -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
