@@ -1,6 +1,8 @@
 // ==========================================
-// STATE MANAGEMENT & SAMPLE DATA
+// FIREBASE INTEGRATION & STATE MANAGEMENT
 // ==========================================
+import { db } from './config.js';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Mapping of structural categories to their corresponding asset filenames
 const CATEGORY_IMAGES = {
@@ -11,59 +13,58 @@ const CATEGORY_IMAGES = {
     "Personal Injury & Accident Claims": "assets/Personal Injury & Accident Claims.jpg"
 };
 
-// Global Contact Settings State
+// Global Memory State (Starts empty, filled by Firebase on load)
 let settingsData = {
     tel: "+1 (555) 000-0000",
     email: "legal@lawsuitfiles.com",
     address: "New York, United States"
 };
+let casesData = [];
+let leadsData = [];
 
-// Initial/Mock database stores
-let casesData = [
-    {
-        id: "case-1",
-        title: "National Consumer Data Security Breach Litigation",
-        category: "Civil Litigation",
-        description: "Investigating corporate data infrastructure failures that exposed private identification metrics, passwords, and banking histories of millions of users without adequate safeguards."
-    },
-    {
-        id: "case-2",
-        title: "Defective Automotive Brake System Defect Investigation",
-        category: "Personal Injury & Accident Claims",
-        description: "Tracking deployment and system errors across electronic emergency brake models manufactured between 2022 and 2025 that cause unexpected lock-ups during transit."
-    },
-    {
-        id: "case-3",
-        title: "Commercial Contract Breach & Antitrust Actions",
-        category: "Corporate & Business Law",
-        description: "A class action exploration dealing with non-compete overreaches and horizontal pricing coordination structures negatively impacting independent regional suppliers."
-    }
-];
-
-let leadsData = [
-    {
-        id: "lead-1",
-        firstName: "Jane",
-        lastName: "Doe",
-        email: "jane.doe@example.com",
-        phone: "555-0199",
-        category: "Civil Litigation",
-        message: "My data was compromised in the breach last month. Received an explicit alert notice."
-    }
-];
-
-// Helper to gracefully fallback if a structural category is missing a mapped image asset
+// Helper to gracefully fallback if an image asset is missing
 function getCaseImage(category) {
     return CATEGORY_IMAGES[category] || "https://via.placeholder.com/400x250?text=Legal+Case";
+}
+
+// ==========================================
+// INITIAL DATABASE SYNC
+// ==========================================
+
+async function fetchDatabaseRecords() {
+    try {
+        // 1. Fetch Global Settings
+        const settingsSnap = await getDoc(doc(db, "settings", "global"));
+        if (settingsSnap.exists()) {
+            settingsData = settingsSnap.data();
+        } else {
+            // Seed initial settings if none exist
+            await setDoc(doc(db, "settings", "global"), settingsData);
+        }
+
+        // 2. Fetch Active Cases
+        const casesSnap = await getDocs(collection(db, "cases"));
+        casesData = casesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // 3. Fetch Submitted Leads
+        const leadsSnap = await getDocs(collection(db, "leads"));
+        leadsData = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Render data onto the UI
+        renderSettings();
+        renderPublicCases();
+        renderAdminDashboard();
+    } catch (error) {
+        console.error("Firebase Sync Error:", error);
+        window.showToast("Failed to sync with secure database servers.", "error");
+    }
 }
 
 // ==========================================
 // DOM RENDER ENGINES
 // ==========================================
 
-// Updates Contact Info in Footer and Admin Settings form
 function renderSettings() {
-    // 1. Update Public Footer Elements
     const footerTel = document.getElementById('footerTel');
     const footerEmail = document.getElementById('footerEmail');
     const footerAddress = document.getElementById('footerAddress');
@@ -72,7 +73,6 @@ function renderSettings() {
     if (footerEmail) footerEmail.innerText = `✉ Queries: ${settingsData.email}`;
     if (footerAddress) footerAddress.innerText = `📍 Intake: ${settingsData.address}`;
 
-    // 2. Pre-fill Admin Settings Input Fields
     const adminTel = document.getElementById('settingTel');
     const adminEmail = document.getElementById('settingEmail');
     const adminAddress = document.getElementById('settingAddress');
@@ -82,7 +82,6 @@ function renderSettings() {
     if (adminAddress) adminAddress.value = settingsData.address;
 }
 
-// Renders the 3-column tile layout on the public Cases page
 function renderPublicCases() {
     const gridContainer = document.getElementById('frontendCasesList');
     if (!gridContainer) return;
@@ -91,10 +90,10 @@ function renderPublicCases() {
     const filterVal = document.getElementById('frontendFilterCases').value;
 
     const filtered = casesData.filter(item => {
-        const matchesSearch = item.title.toLowerCase().includes(searchVal) || 
-                              item.description.toLowerCase().includes(searchVal);
+        const titleMatch = item.title ? item.title.toLowerCase().includes(searchVal) : false;
+        const descMatch = item.description ? item.description.toLowerCase().includes(searchVal) : false;
         const matchesCategory = (filterVal === 'All' || item.category === filterVal);
-        return matchesSearch && matchesCategory;
+        return (titleMatch || descMatch) && matchesCategory;
     });
 
     if (filtered.length === 0) {
@@ -119,20 +118,17 @@ function renderPublicCases() {
         </div>
     `).join('');
 
-    // Attach explicit click event interceptors to newly rendered tile buttons
     gridContainer.querySelectorAll('.btn-view-detail').forEach(btn => {
         btn.addEventListener('click', () => showCaseDetailPage(btn.getAttribute('data-id')));
     });
 
     gridContainer.querySelectorAll('.btn-tile-contact').forEach(btn => {
         btn.addEventListener('click', () => {
-            const cat = btn.getAttribute('data-category');
-            forwardToContactWithCategory(cat);
+            forwardToContactWithCategory(btn.getAttribute('data-category'));
         });
     });
 }
 
-// Transitions views to show a specific case in detail and pre-fills the global form
 function showCaseDetailPage(caseId) {
     const caseObj = casesData.find(c => c.id === caseId);
     if (!caseObj) return;
@@ -140,7 +136,6 @@ function showCaseDetailPage(caseId) {
     const detailsContainer = document.getElementById('dynamicCaseDetailContainer');
     if (!detailsContainer) return;
 
-    // Inject matching dynamic view content
     detailsContainer.innerHTML = `
         <div class="details-banner">
             <img src="${getCaseImage(caseObj.category)}" alt="${caseObj.category}" onerror="this.src='https://via.placeholder.com/1100x380?text=Investigation+Banner'">
@@ -152,44 +147,33 @@ function showCaseDetailPage(caseId) {
         </div>
     `;
 
-    // Pre-select category configuration on the unified global contact form
     const globalSelect = document.getElementById('globalLeadCategory');
     if (globalSelect) {
         globalSelect.value = caseObj.category;
+        if(window.syncCustomSelect) window.syncCustomSelect('globalLeadCategory');
     }
 
-    // Trigger explicit single page container routing transition
-    if (typeof window.navigateToPage === 'function') {
-        window.navigateToPage('case-details');
-    }
+    if (typeof window.navigateToPage === 'function') window.navigateToPage('case-details');
 }
 
-// Redirects and sets categories for standard global actions
 function forwardToContactWithCategory(categoryName) {
     const globalSelect = document.getElementById('globalLeadCategory');
     if (globalSelect) {
         globalSelect.value = categoryName;
+        if(window.syncCustomSelect) window.syncCustomSelect('globalLeadCategory');
     }
-    if (typeof window.navigateToPage === 'function') {
-        window.navigateToPage('connect');
-    }
+    if (typeof window.navigateToPage === 'function') window.navigateToPage('connect');
     
-    // Smooth scroll down to the newly unified form
     const formSection = document.getElementById('globalContactSection');
-    if(formSection) {
-        formSection.scrollIntoView({ behavior: 'smooth' });
-    }
+    if(formSection) formSection.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Renders Management Data inside Admin Panels
 function renderAdminDashboard() {
-    // 1. Render Admin Incoming Leads
     const leadsTableBody = document.querySelector('#adminLeadsTable tbody');
     const leadFilter = document.getElementById('adminLeadFilter').value;
     
     if (leadsTableBody) {
         const filteredLeads = leadsData.filter(l => leadFilter === 'All' || l.category === leadFilter);
-        
         if (filteredLeads.length === 0) {
             leadsTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No lead records stored.</td></tr>`;
         } else {
@@ -205,7 +189,6 @@ function renderAdminDashboard() {
         }
     }
 
-    // 2. Render Admin Active Case Manager Rows (with Edit buttons)
     const casesTableBody = document.querySelector('#adminCasesTable tbody');
     if (casesTableBody) {
         if (casesData.length === 0) {
@@ -225,7 +208,6 @@ function renderAdminDashboard() {
             `).join('');
         }
 
-        // Hook operational handlers back onto Admin Table controllers
         casesTableBody.querySelectorAll('.btn-admin-edit').forEach(btn => {
             btn.addEventListener('click', () => loadCaseIntoAdminForm(btn.getAttribute('data-id')));
         });
@@ -239,30 +221,30 @@ function renderAdminDashboard() {
 // ADMIN PANEL CRUD OPERATIONS
 // ==========================================
 
-// Pre-populates the admin form with structural variables to process modifications
 function loadCaseIntoAdminForm(caseId) {
     const targetCase = casesData.find(c => c.id === caseId);
     if (!targetCase) return;
 
-    // Shift text inputs to reflect edit status
     document.getElementById('editCaseTargetId').value = targetCase.id;
     document.getElementById('newCaseTitle').value = targetCase.title;
     document.getElementById('newCaseCategory').value = targetCase.category;
     document.getElementById('newCaseDesc').value = targetCase.description;
+
+    // Sync Custom Select UI
+    if(window.syncCustomSelect) window.syncCustomSelect('newCaseCategory');
 
     document.getElementById('adminFormHeadline').innerText = "⚡ Edit Case Parameters Mode";
     document.getElementById('adminFormSubmitBtn').innerText = "Save Modified Changes";
     document.getElementById('adminFormSubmitBtn').className = "btn btn-warning";
     document.getElementById('cancelEditCaseBtn').style.display = "inline-block";
 
-    // Smooth scroll up within the modal environment directly to the form element
     document.getElementById('addCaseForm').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Reverts the Admin Form from Editing back to Standard Creation
 function clearAdminCaseFormState() {
     document.getElementById('editCaseTargetId').value = "";
     document.getElementById('addCaseForm').reset();
+    if(window.syncCustomSelect) window.syncCustomSelect('newCaseCategory');
     
     document.getElementById('adminFormHeadline').innerText = "Add New Case Investigation";
     document.getElementById('adminFormSubmitBtn').innerText = "Add Case to Website";
@@ -270,31 +252,35 @@ function clearAdminCaseFormState() {
     document.getElementById('cancelEditCaseBtn').style.display = "none";
 }
 
-// Disposes of an unwanted case listing row
 function deleteCaseTracker(caseId) {
-    if (confirm("Are you sure you want to completely erase this case profile from the tracking records?")) {
-        casesData = casesData.filter(c => c.id !== caseId);
-        
-        // Reset processing forms if active target is deleted mid-flight
-        if(document.getElementById('editCaseTargetId').value === caseId) {
-            clearAdminCaseFormState();
-        }
+    window.customConfirm("Are you sure you want to completely erase this case profile from the tracking records?", async () => {
+        try {
+            // Delete record physically from Firebase
+            await deleteDoc(doc(db, "cases", caseId));
+            
+            // Reconcile Local App State
+            casesData = casesData.filter(c => c.id !== caseId);
+            if(document.getElementById('editCaseTargetId').value === caseId) clearAdminCaseFormState();
 
-        renderAdminDashboard();
-        renderPublicCases();
-    }
+            renderAdminDashboard();
+            renderPublicCases();
+            window.showToast("Case profile securely deleted from database.");
+        } catch (error) {
+            console.error("Deletion Error:", error);
+            window.showToast("Server refused deletion request.", "error");
+        }
+    });
 }
 
-// CSV Export Utility for Administrative Logs
 function exportLeadsToCSV() {
     if (leadsData.length === 0) {
-        alert("There is no structural data inside the collection to build a download output payload.");
+        window.showToast("No structural data inside the collection to export.", "error");
         return;
     }
     
     let csvContent = "data:text/csv;charset=utf-8,First Name,Last Name,Email,Phone,Category,Message\n";
     leadsData.forEach(l => {
-        let cleanMsg = l.message.replace(/"/g, '""');
+        let cleanMsg = l.message ? l.message.replace(/"/g, '""') : "";
         csvContent += `"${l.firstName}","${l.lastName}","${l.email}","${l.phone}","${l.category}","${cleanMsg}"\n`;
     });
 
@@ -313,34 +299,49 @@ function exportLeadsToCSV() {
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // 1. Live Filtering Inputs
     document.getElementById('frontendSearchCases').addEventListener('input', renderPublicCases);
     document.getElementById('frontendFilterCases').addEventListener('change', renderPublicCases);
     document.getElementById('adminLeadFilter').addEventListener('change', renderAdminDashboard);
     document.getElementById('exportCsvBtn').addEventListener('click', exportLeadsToCSV);
-    
-    // Cancel editing context trigger
     document.getElementById('cancelEditCaseBtn').addEventListener('click', clearAdminCaseFormState);
 
-    // 2. Global Unified Form Ingestion
-    document.getElementById('globalContactForm').addEventListener('submit', function(e) {
+    // 1. Submit Public Lead Form to Firebase
+    document.getElementById('globalContactForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const newLead = {
-            id: 'lead-' + Date.now(),
-            firstName: document.getElementById('globalLeadFirstName').value,
-            lastName: document.getElementById('globalLeadLastName').value,
-            email: document.getElementById('globalLeadEmail').value,
-            phone: document.getElementById('globalLeadPhone').value,
-            category: document.getElementById('globalLeadCategory').value,
-            message: document.getElementById('globalLeadMessage').value
-        };
-        leadsData.push(newLead);
-        this.reset();
-        alert("Your secure information profile has been registered. Evaluation networks are updating.");
-        renderAdminDashboard();
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerText = "Processing Security Handshake...";
+        submitBtn.disabled = true;
+
+        try {
+            const newLead = {
+                firstName: document.getElementById('globalLeadFirstName').value,
+                lastName: document.getElementById('globalLeadLastName').value,
+                email: document.getElementById('globalLeadEmail').value,
+                phone: document.getElementById('globalLeadPhone').value,
+                category: document.getElementById('globalLeadCategory').value,
+                message: document.getElementById('globalLeadMessage').value,
+                timestamp: new Date().toISOString()
+            };
+
+            const docRef = await addDoc(collection(db, "leads"), newLead);
+            newLead.id = docRef.id;
+            leadsData.push(newLead);
+            
+            this.reset();
+            if(window.syncCustomSelect) window.syncCustomSelect('globalLeadCategory');
+            
+            window.showToast("Your secure information profile has been registered.");
+            renderAdminDashboard();
+        } catch (error) {
+            console.error("Lead Generation Error:", error);
+            window.showToast("Database intake rejected. Try again.", "error");
+        } finally {
+            submitBtn.innerText = "Submit Secure Consultation Request";
+            submitBtn.disabled = false;
+        }
     });
 
-    // 3. Admin Security Processing Form
+    // 2. Admin Security Check
     document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const email = document.getElementById('adminEmail').value.trim();
@@ -349,23 +350,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (email === "admin@gmail.com" && password === "admin1234") {
             document.getElementById('adminLoginBox').style.display = 'none';
             document.getElementById('adminDashboardBox').style.display = 'flex';
+            window.showToast("Authentication confirmed. Access granted.");
             renderAdminDashboard();
         } else {
-            alert("Invalid clearance credentials. Authentication refused.");
+            window.showToast("Invalid clearance credentials.", "error");
         }
     });
 
-    // 4. Admin Session Termination (Logout)
+    // 3. Admin Logout
     document.getElementById('adminLogoutBtn').addEventListener('click', () => {
         document.getElementById('adminLoginForm').reset();
         clearAdminCaseFormState();
         document.getElementById('adminDashboardBox').style.display = 'none';
         document.getElementById('adminLoginBox').style.display = 'block';
         document.getElementById('adminOverlay').style.display = 'none';
+        window.showToast("Secure session terminated.");
     });
 
-    // 5. Shared Case Creation & Modification Submissions Tracker
-    document.getElementById('addCaseForm').addEventListener('submit', function(e) {
+    // 4. Submit Admin Case (Create/Update via Firebase)
+    document.getElementById('addCaseForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const targetId = document.getElementById('editCaseTargetId').value;
@@ -373,48 +376,72 @@ document.addEventListener('DOMContentLoaded', () => {
         const catVal = document.getElementById('newCaseCategory').value;
         const descVal = document.getElementById('newCaseDesc').value;
 
-        if (targetId) {
-            // Processing Modification Update Path
-            const idx = casesData.findIndex(c => c.id === targetId);
-            if(idx !== -1) {
-                casesData[idx].title = titleVal;
-                casesData[idx].category = catVal;
-                casesData[idx].description = descVal;
-                alert("Case variables modified correctly.");
+        const submitBtn = document.getElementById('adminFormSubmitBtn');
+        const originalText = submitBtn.innerText;
+        submitBtn.innerText = "Updating Database...";
+        submitBtn.disabled = true;
+
+        try {
+            if (targetId) {
+                // Update Existing
+                await updateDoc(doc(db, "cases", targetId), {
+                    title: titleVal, category: catVal, description: descVal
+                });
+                
+                const idx = casesData.findIndex(c => c.id === targetId);
+                if(idx !== -1) {
+                    casesData[idx] = { ...casesData[idx], title: titleVal, category: catVal, description: descVal };
+                }
+                window.showToast("Case parameters successfully modified.");
+                clearAdminCaseFormState();
+            } else {
+                // Insert New
+                const newCaseRef = await addDoc(collection(db, "cases"), {
+                    title: titleVal, category: catVal, description: descVal, createdAt: new Date().toISOString()
+                });
+                casesData.push({ id: newCaseRef.id, title: titleVal, category: catVal, description: descVal });
+                this.reset();
+                if(window.syncCustomSelect) window.syncCustomSelect('newCaseCategory');
+                window.showToast("New investigation active on frontend database.");
             }
-            clearAdminCaseFormState();
-        } else {
-            // Processing New Entry Target Path
-            const newCase = {
-                id: 'case-' + Date.now(),
-                title: titleVal,
-                category: catVal,
-                description: descVal
-            };
-            casesData.push(newCase);
-            this.reset();
-            alert("New investigation route listed successfully.");
+            renderAdminDashboard();
+            renderPublicCases();
+        } catch (error) {
+            console.error("Database Write Error:", error);
+            window.showToast("Failed to modify database collection.", "error");
+        } finally {
+            submitBtn.innerText = originalText;
+            submitBtn.disabled = false;
         }
-
-        renderAdminDashboard();
-        renderPublicCases();
     });
 
-    // 6. Admin Settings Form (Contact Info Update)
-    document.getElementById('updateSettingsForm').addEventListener('submit', function(e) {
+    // 5. Submit Global Settings (Firebase)
+    document.getElementById('updateSettingsForm').addEventListener('submit', async function(e) {
         e.preventDefault();
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerText = "Syncing Settings...";
+        submitBtn.disabled = true;
         
-        // Push form values directly into the global settings state
-        settingsData.tel = document.getElementById('settingTel').value;
-        settingsData.email = document.getElementById('settingEmail').value;
-        settingsData.address = document.getElementById('settingAddress').value;
+        const newSettings = {
+            tel: document.getElementById('settingTel').value,
+            email: document.getElementById('settingEmail').value,
+            address: document.getElementById('settingAddress').value
+        };
 
-        // Render the footer and alert the user
-        renderSettings();
-        alert("Global contact details have been successfully updated!");
+        try {
+            await setDoc(doc(db, "settings", "global"), newSettings);
+            settingsData = newSettings;
+            renderSettings();
+            window.showToast("Contact indices successfully updated!");
+        } catch (error) {
+            console.error("Settings Update Error:", error);
+            window.showToast("Failed to lock global settings.", "error");
+        } finally {
+            submitBtn.innerText = "Save Updates Globally";
+            submitBtn.disabled = false;
+        }
     });
 
-    // Run foundational executions on boot
-    renderSettings();
-    renderPublicCases();
+    // Mount initial Firebase Fetch
+    fetchDatabaseRecords();
 });
