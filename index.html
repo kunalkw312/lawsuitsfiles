@@ -79,10 +79,10 @@
         .stat { background: #f8f9fa; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
         .stat h3 { font-size: 1.8em; color: #007bff; margin-bottom: 5px; }
 
-        /* ================= CONTACT ================= */
-        #contact { padding: 80px 8%; background: #f8f9fa; }
-        #contact h2 { text-align: center; margin-bottom: 20px; font-size: 2em; color: #222; }
-        #contact p.subtext { text-align: center; margin-bottom: 40px; font-size: 1.1em; color: #555; }
+        /* ================= CONTACT / CONNECT ================= */
+        #connect { padding: 80px 8%; background: #f8f9fa; }
+        #connect h2 { text-align: center; margin-bottom: 20px; font-size: 2em; color: #222; }
+        #connect p.subtext { text-align: center; margin-bottom: 40px; font-size: 1.1em; color: #555; }
         
         form.contact-form { max-width: 900px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         form.contact-form input, form.contact-form textarea, form.contact-form select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95em; }
@@ -151,19 +151,19 @@
             <span>LawsuitFiles</span>
         </div>
         <nav>
-            <a href="#home">Home</a>
-            <a href="#cases">Cases</a>
-            <a href="#about">About</a>
-            <a href="#contact">Contact</a>
+            <a href="#home" target="_blank">Home</a>
+            <a href="#cases" target="_blank">Cases</a>
+            <a href="#about" target="_blank">About</a>
+            <a href="#connect" target="_blank">Connect</a>
         </nav>
-        <button class="btn" onclick="document.getElementById('contact').scrollIntoView();">Get Started</button>
+        <button class="btn" onclick="document.getElementById('connect').scrollIntoView();">Get Started</button>
     </header>
 
     <section class="hero" id="home">
         <div class="hero-text">
             <h1>Protecting Your Rights & Securing Justice</h1>
             <p>Experienced attorneys dedicated to helping individuals and families navigate complex legal matters with confidence, integrity, and proven legal results.</p>
-            <button class="btn" onclick="document.getElementById('contact').scrollIntoView();">Free Consultation</button>
+            <button class="btn" onclick="document.getElementById('connect').scrollIntoView();">Free Consultation</button>
             <button class="btn btn-secondary" style="margin-left: 10px;" onclick="document.getElementById('cases').scrollIntoView();">View Cases</button>
         </div>
         <div class="hero-image">
@@ -243,7 +243,7 @@
     <section class="cta-section">
         <h2>Ready to Get Started?</h2>
         <p>Schedule a free consultation today and let us help you navigate your legal challenges. Our experienced team is ready to fight for your rights.</p>
-        <button class="btn" onclick="document.getElementById('contact').scrollIntoView();">Contact Us Now</button>
+        <button class="btn" onclick="document.getElementById('connect').scrollIntoView();">Contact Us Now</button>
         <div class="cta-stats">
             <div class="stat"><h3>500+</h3><p>Cases Won</p></div>
             <div class="stat"><h3>30+</h3><p>Years Experience</p></div>
@@ -251,8 +251,8 @@
         </div>
     </section>
 
-    <section id="contact">
-        <h2>Contact Us - Free Case Review</h2>
+    <section id="connect">
+        <h2>Connect With Us - Free Case Review</h2>
         <p class="subtext">If you have questions about an ongoing lawsuit or would like a free case review, complete the form below.</p>
 
         <form class="contact-form" id="publicContactForm">
@@ -292,18 +292,18 @@
             <div>
                 <h3>EXPLORE</h3>
                 <ul>
-                    <li><a href="#home">Home</a></li>
-                    <li><a href="#about">About Us</a></li>
-                    <li><a href="#contact">Contact Us</a></li>
+                    <li><a href="#home" target="_blank">Home</a></li>
+                    <li><a href="#about" target="_blank">About Us</a></li>
+                    <li><a href="#connect" target="_blank">Connect Us</a></li>
                 </ul>
             </div>
             <div>
                 <h3>PRACTICE AREAS</h3>
                 <ul>
-                    <li><a href="#cases">Civil Litigation</a></li>
-                    <li><a href="#cases">Criminal Cases</a></li>
-                    <li><a href="#cases">Family Law</a></li>
-                    <li><a href="#cases">Personal Injury</a></li>
+                    <li><a href="#cases" target="_blank">Civil Litigation</a></li>
+                    <li><a href="#cases" target="_blank">Criminal Cases</a></li>
+                    <li><a href="#cases" target="_blank">Family Law</a></li>
+                    <li><a href="#cases" target="_blank">Personal Injury</a></li>
                 </ul>
             </div>
             <div>
@@ -413,17 +413,6 @@
     </div>
 
     <script>
-        // Smooth scrolling for nav links
-        document.querySelectorAll('nav a').forEach(link => {
-            link.addEventListener('click', function(e) {
-                const targetId = this.getAttribute('href');
-                if(targetId.startsWith('#')) {
-                    e.preventDefault();
-                    document.querySelector(targetId).scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
-
         // Admin Overlay Toggles
         const adminOverlay = document.getElementById('adminOverlay');
         document.getElementById('openAdminModalBtn').addEventListener('click', () => { adminOverlay.style.display = 'flex'; });
