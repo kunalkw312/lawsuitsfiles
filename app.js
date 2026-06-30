@@ -1,9 +1,4 @@
-import { auth, db } from "./config.js";
-import { 
-    signInWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { db } from "./config.js";
 import { 
     collection, 
     addDoc, 
@@ -19,16 +14,21 @@ import {
 document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
-    // 1. AUTHENTICATION & ADMIN UI TOGGLES
+    // 1. AUTHENTICATION (HARDCODED) & ADMIN UI
     // ==========================================
     const loginBox = document.getElementById('adminLoginBox');
     const dashboardBox = document.getElementById('adminDashboardBox');
     const adminLoginForm = document.getElementById('adminLoginForm');
     const adminLogoutBtn = document.getElementById('adminLogoutBtn');
 
-    // Listen for Auth State Changes
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
+    // Hardcoded Admin Credentials
+    const ADMIN_EMAIL = "admin@gmail.com";
+    const ADMIN_PASSWORD = "admin1234";
+
+    // Check Auth State using sessionStorage instead of Firebase
+    function checkAuthState() {
+        const isLoggedIn = sessionStorage.getItem('isAdminLoggedIn');
+        if (isLoggedIn === 'true') {
             // Logged in: Show Dashboard, Hide Login
             if (loginBox) loginBox.style.display = 'none';
             if (dashboardBox) dashboardBox.style.display = 'flex';
@@ -39,11 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (loginBox) loginBox.style.display = 'block';
             if (dashboardBox) dashboardBox.style.display = 'none';
         }
-    });
+    }
+
+    // Run on initial load
+    checkAuthState();
 
     // Admin Login form submission
     if (adminLoginForm) {
-        adminLoginForm.addEventListener('submit', async (e) => {
+        adminLoginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
             const email = document.getElementById('adminEmail').value;
@@ -55,30 +58,31 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.innerText = "Authenticating...";
             submitBtn.disabled = true;
 
-            try {
-                // Attempt login
-                await signInWithEmailAndPassword(auth, email, password);
-                adminLoginForm.reset();
-            } catch (error) {
-                // Explicitly show error if it fails
-                alert("Login failed! Please check your email/password.\nError: " + error.message);
-                console.error("Firebase Login Error:", error);
-            } finally {
+            // Simulate a brief network delay for realism
+            setTimeout(() => {
+                if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+                    // Success: Set local session
+                    sessionStorage.setItem('isAdminLoggedIn', 'true');
+                    adminLoginForm.reset();
+                    checkAuthState();
+                } else {
+                    // Fail
+                    alert("Login failed! Invalid email or password.");
+                    console.error("Hardcoded Login Error: Credentials do not match.");
+                }
+                
                 // Restore button state
                 submitBtn.innerText = originalText;
                 submitBtn.disabled = false;
-            }
+            }, 500);
         });
     }
 
     // Admin Logout
     if (adminLogoutBtn) {
-        adminLogoutBtn.addEventListener('click', async () => {
-            try {
-                await signOut(auth);
-            } catch (error) {
-                console.error("Logout Error:", error);
-            }
+        adminLogoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('isAdminLoggedIn');
+            checkAuthState();
         });
     }
 
@@ -321,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="case-category">${c.category}</span>
                 <h3>${c.title}</h3>
                 <p>${c.description}</p>
-                <button class="btn" style="width: 100%;" onclick="document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });">Check Eligibility</button>
+                <button class="btn" style="width: 100%;" onclick="document.getElementById('connect').scrollIntoView({ behavior: 'smooth' });">Check Eligibility</button>
             `;
             list.appendChild(card);
         });
