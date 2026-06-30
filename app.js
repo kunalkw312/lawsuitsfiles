@@ -4,11 +4,11 @@
 
 // Mapping of structural categories to their corresponding asset filenames
 const CATEGORY_IMAGES = {
-    "Civil Litigation": "assets/Civil Litigation.png",
-    "Criminal Cases": "assets/Criminal Cases.png",
-    "Family Law": "assets/Family Law.png",
-    "Corporate & Business Law": "assets/Corporate & Business Law.png",
-    "Personal Injury & Accident Claims": "assets/Personal Injury & Accident Claims.png"
+    "Civil Litigation": "assets/Civil Litigation.jpg",
+    "Criminal Cases": "assets/Criminal Cases.jpg",
+    "Family Law": "assets/Family Law.jpg",
+    "Corporate & Business Law": "assets/Corporate & Business Law.jpg",
+    "Personal Injury & Accident Claims": "assets/Personal Injury & Accident Claims.jpg"
 };
 
 // Initial/Mock database stores
