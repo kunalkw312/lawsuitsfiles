@@ -11,6 +11,13 @@ const CATEGORY_IMAGES = {
     "Personal Injury & Accident Claims": "assets/Personal Injury & Accident Claims.jpg"
 };
 
+// Global Contact Settings State
+let settingsData = {
+    tel: "+1 (555) 000-0000",
+    email: "legal@lawsuitfiles.com",
+    address: "New York, United States"
+};
+
 // Initial/Mock database stores
 let casesData = [
     {
@@ -53,6 +60,27 @@ function getCaseImage(category) {
 // ==========================================
 // DOM RENDER ENGINES
 // ==========================================
+
+// Updates Contact Info in Footer and Admin Settings form
+function renderSettings() {
+    // 1. Update Public Footer Elements
+    const footerTel = document.getElementById('footerTel');
+    const footerEmail = document.getElementById('footerEmail');
+    const footerAddress = document.getElementById('footerAddress');
+
+    if (footerTel) footerTel.innerText = `Tel Support: ${settingsData.tel}`;
+    if (footerEmail) footerEmail.innerText = `✉ Queries: ${settingsData.email}`;
+    if (footerAddress) footerAddress.innerText = `📍 Intake: ${settingsData.address}`;
+
+    // 2. Pre-fill Admin Settings Input Fields
+    const adminTel = document.getElementById('settingTel');
+    const adminEmail = document.getElementById('settingEmail');
+    const adminAddress = document.getElementById('settingAddress');
+
+    if (adminTel) adminTel.value = settingsData.tel;
+    if (adminEmail) adminEmail.value = settingsData.email;
+    if (adminAddress) adminAddress.value = settingsData.address;
+}
 
 // Renders the 3-column tile layout on the public Cases page
 function renderPublicCases() {
@@ -104,7 +132,7 @@ function renderPublicCases() {
     });
 }
 
-// Transitions views to show a specific case in detail and pre-fills its inline form
+// Transitions views to show a specific case in detail and pre-fills the global form
 function showCaseDetailPage(caseId) {
     const caseObj = casesData.find(c => c.id === caseId);
     if (!caseObj) return;
@@ -124,10 +152,10 @@ function showCaseDetailPage(caseId) {
         </div>
     `;
 
-    // Pre-select category configuration on the internal dynamic inline contact form
-    const inlineSelect = document.getElementById('inlineCaseContactForm').querySelector('select');
-    if (inlineSelect) {
-        inlineSelect.value = caseObj.category;
+    // Pre-select category configuration on the unified global contact form
+    const globalSelect = document.getElementById('globalLeadCategory');
+    if (globalSelect) {
+        globalSelect.value = caseObj.category;
     }
 
     // Trigger explicit single page container routing transition
@@ -138,12 +166,18 @@ function showCaseDetailPage(caseId) {
 
 // Redirects and sets categories for standard global actions
 function forwardToContactWithCategory(categoryName) {
-    const publicSelect = document.getElementById('leadCategory');
-    if (publicSelect) {
-        publicSelect.value = categoryName;
+    const globalSelect = document.getElementById('globalLeadCategory');
+    if (globalSelect) {
+        globalSelect.value = categoryName;
     }
     if (typeof window.navigateToPage === 'function') {
         window.navigateToPage('connect');
+    }
+    
+    // Smooth scroll down to the newly unified form
+    const formSection = document.getElementById('globalContactSection');
+    if(formSection) {
+        formSection.scrollIntoView({ behavior: 'smooth' });
     }
 }
 
@@ -288,40 +322,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cancel editing context trigger
     document.getElementById('cancelEditCaseBtn').addEventListener('click', clearAdminCaseFormState);
 
-    // 2. Public Multi-Page Form Ingest Interceptors
-    document.getElementById('publicContactForm').addEventListener('submit', function(e) {
+    // 2. Global Unified Form Ingestion
+    document.getElementById('globalContactForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const newLead = {
             id: 'lead-' + Date.now(),
-            firstName: document.getElementById('leadFirstName').value,
-            lastName: document.getElementById('leadLastName').value,
-            email: document.getElementById('leadEmail').value,
-            phone: document.getElementById('leadPhone').value,
-            category: document.getElementById('leadCategory').value,
-            message: document.getElementById('leadMessage').value
+            firstName: document.getElementById('globalLeadFirstName').value,
+            lastName: document.getElementById('globalLeadLastName').value,
+            email: document.getElementById('globalLeadEmail').value,
+            phone: document.getElementById('globalLeadPhone').value,
+            category: document.getElementById('globalLeadCategory').value,
+            message: document.getElementById('globalLeadMessage').value
         };
         leadsData.push(newLead);
         this.reset();
         alert("Your secure information profile has been registered. Evaluation networks are updating.");
         renderAdminDashboard();
-    });
-
-    document.getElementById('inlineCaseContactForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const newLead = {
-            id: 'lead-' + Date.now(),
-            firstName: document.getElementById('inlineLeadFirstName').value,
-            lastName: document.getElementById('inlineLeadLastName').value,
-            email: document.getElementById('inlineLeadEmail').value,
-            phone: document.getElementById('inlineLeadPhone').value,
-            category: document.getElementById('inlineLeadCategory').value,
-            message: document.getElementById('inlineLeadMessage').value
-        };
-        leadsData.push(newLead);
-        this.reset();
-        alert("Your targeted case information request has been logged successfully.");
-        renderAdminDashboard();
-        window.navigateToPage('cases');
     });
 
     // 3. Admin Security Processing Form
@@ -384,6 +400,21 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPublicCases();
     });
 
+    // 6. Admin Settings Form (Contact Info Update)
+    document.getElementById('updateSettingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Push form values directly into the global settings state
+        settingsData.tel = document.getElementById('settingTel').value;
+        settingsData.email = document.getElementById('settingEmail').value;
+        settingsData.address = document.getElementById('settingAddress').value;
+
+        // Render the footer and alert the user
+        renderSettings();
+        alert("Global contact details have been successfully updated!");
+    });
+
     // Run foundational executions on boot
+    renderSettings();
     renderPublicCases();
 });
