@@ -1,533 +1,837 @@
-// ==========================================
-// FIREBASE INTEGRATION & STATE MANAGEMENT
-// ==========================================
+// =============================================================
+// app.js – Firebase Integration & State Management
+// =============================================================
+
 import { db } from './config.js';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// Global Memory State
-let settingsData = {
-    tel: "+1 (555) 000-0000",
-    email: "legal@lawsuitfiles.com",
-    address: "New York, United States"
+// =============================================================
+// STATE
+// =============================================================
+const state = {
+  settings: { tel: "+1 (555) 000-0000", email: "legal@lawsuitefiles.com", address: "New York, United States" },
+  adBanner: { imageUrl: "", targetCaseId: "", isActive: false },
+  categories: [],
+  cases: [],
+  leads: [],
+  isAdmin: false,
+  initialized: false
 };
-let categoriesData = [];
-let casesData = [];
-let leadsData = [];
 
-// ==========================================
-// INITIAL DATABASE SYNC
-// ==========================================
+// DOM helpers with null safety
+const $ = (id) => document.getElementById(id);
+const $$ = (selector) => document.querySelector(selector);
 
-async function fetchDatabaseRecords() {
-    try {
-        // 1. Fetch Global Settings
-        const settingsSnap = await getDoc(doc(db, "settings", "global"));
-        if (settingsSnap.exists()) {
-            settingsData = settingsSnap.data();
-        } else {
-            await setDoc(doc(db, "settings", "global"), settingsData);
-        }
+// =============================================================
+// FIREBASE: FETCH ALL
+// =============================================================
+async function fetchAllData() {
+  try {
+    console.log("🔥 Fetching data from Firebase...");
 
-        // 2. Fetch Categories
-        const catSnap = await getDocs(collection(db, "categories"));
-        categoriesData = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // 3. Fetch Active Cases
-        const casesSnap = await getDocs(collection(db, "cases"));
-        casesData = casesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // 4. Fetch Submitted Leads
-        const leadsSnap = await getDocs(collection(db, "leads"));
-        leadsData = leadsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // Render data onto the UI
-        renderSettings();
-        renderCategories();
-        renderPublicCases();
-        renderAdminDashboard();
-    } catch (error) {
-        console.error("Firebase Sync Error:", error);
-        window.showToast("Failed to sync with secure database servers.", "error");
+    // Settings
+    const settingsSnap = await getDoc(doc(db, "settings", "global"));
+    if (settingsSnap.exists()) {
+      state.settings = settingsSnap.data();
+    } else {
+      await setDoc(doc(db, "settings", "global"), state.settings);
     }
+
+    // Ad Banner
+    const adSnap = await getDoc(doc(db, "settings", "adBanner"));
+    if (adSnap.exists()) {
+      state.adBanner = adSnap.data();
+    } else {
+      await setDoc(doc(db, "settings", "adBanner"), state.adBanner);
+    }
+
+    // Categories
+    const catSnap = await getDocs(collection(db, "categories"));
+    state.categories = catSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Cases
+    const casesSnap = await getDocs(collection(db, "cases"));
+    state.cases = casesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Leads
+    const leadsSnap = await getDocs(collection(db, "leads"));
+    state.leads = leadsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    state.initialized = true;
+    renderAll();
+    console.log("✅ Firebase data loaded successfully.");
+  } catch (err) {
+    console.error("❌ Firebase sync error:", err);
+    state.initialized = false;
+    renderAll();
+    if (typeof window.showToast === 'function') {
+      window.showToast("Failed to sync with database. Using local data.", "error");
+    }
+  }
 }
 
-// ==========================================
-// DOM RENDER ENGINES
-// ==========================================
+// =============================================================
+// RENDER: All UI
+// =============================================================
+function renderAll() {
+  try {
+    renderSettings();
+    renderAdBanner();
+    renderCategories();
+    renderPublicCases();
+    renderAdminDashboard();
+    renderStats();
+  } catch (err) {
+    console.error("Render error:", err);
+  }
+}
 
+// ---- Stats ----
+function renderStats() {
+  const totalLeads = document.getElementById('statTotalLeads');
+  const categories = document.getElementById('statCategories');
+  const cases = document.getElementById('statCases');
+
+  if (totalLeads) totalLeads.textContent = state.leads.length;
+  if (categories) categories.textContent = state.categories.length;
+  if (cases) cases.textContent = state.cases.length;
+}
+
+// ---- Settings ----
 function renderSettings() {
-    // Public Footer Updates
-    const footerTel = document.getElementById('footerTel');
-    const footerEmail = document.getElementById('footerEmail');
-    const footerAddress = document.getElementById('footerAddress');
+  const s = state.settings;
+  const el = (id) => document.getElementById(id);
 
-    if (footerTel) footerTel.innerText = `Tel Support: ${settingsData.tel}`;
-    if (footerEmail) footerEmail.innerText = `✉ Queries: ${settingsData.email}`;
-    if (footerAddress) footerAddress.innerText = `📍 Intake: ${settingsData.address}`;
+  if (el('footerTel')) el('footerTel').textContent = `Tel Support: ${s.tel}`;
+  if (el('footerEmail')) el('footerEmail').textContent = ` Queries: ${s.email}`;
+  if (el('footerAddress')) el('footerAddress').textContent = `Intake: ${s.address}`;
 
-    // Admin Panel Updates
-    const adminTel = document.getElementById('settingTel');
-    const adminEmail = document.getElementById('settingEmail');
-    const adminAddress = document.getElementById('settingAddress');
-
-    if (adminTel) adminTel.value = settingsData.tel;
-    if (adminEmail) adminEmail.value = settingsData.email;
-    if (adminAddress) adminAddress.value = settingsData.address;
+  if (el('settingTel')) el('settingTel').value = s.tel;
+  if (el('settingEmail')) el('settingEmail').value = s.email;
+  if (el('settingAddress')) el('settingAddress').value = s.address;
 }
 
+// ---- Ad Banner ----
+function renderAdBanner() {
+  // 1. Update Frontend Display
+  const bannerWrap = document.getElementById('frontendAdBanner');
+  const bannerImg = document.getElementById('frontendAdBannerImg');
+  
+  if (bannerWrap && bannerImg) {
+    if (state.adBanner.isActive && state.adBanner.imageUrl && state.adBanner.targetCaseId) {
+      bannerImg.src = state.adBanner.imageUrl;
+      bannerWrap.classList.add('active');
+      bannerWrap.onclick = (e) => {
+        e.preventDefault();
+        showCaseDetail(state.adBanner.targetCaseId);
+      };
+    } else {
+      bannerWrap.classList.remove('active');
+    }
+  }
+
+  // 2. Update Admin Target Case Dropdown Options
+  const targetCaseSelect = document.getElementById('adTargetCase');
+  if (targetCaseSelect) {
+    const currentVal = state.adBanner.targetCaseId;
+    const opts = state.cases.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+    targetCaseSelect.innerHTML = `<option value="">Select a Case</option>${opts}`;
+    
+    if (currentVal && state.cases.some(c => c.id === currentVal)) {
+      targetCaseSelect.value = currentVal;
+    }
+  }
+
+  if (typeof window.initCustomSelects === 'function') {
+    window.initCustomSelects();
+  }
+
+  // 3. Update Admin Ad Form Values
+  const adImgInput = document.getElementById('adImageUrl');
+  const adActiveInput = document.getElementById('adIsActive');
+  
+  if (adImgInput) adImgInput.value = state.adBanner.imageUrl || '';
+  if (adActiveInput) adActiveInput.checked = state.adBanner.isActive || false;
+}
+
+// ---- Categories ----
 function renderCategories() {
-    const categoryOptions = categoriesData.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-    
-    // Update Select Elements
-    document.getElementById('frontendFilterCases').innerHTML = `<option value="All">All Categories</option>${categoryOptions}`;
-    document.getElementById('adminLeadFilter').innerHTML = `<option value="All">All Categories</option>${categoryOptions}`;
-    document.getElementById('globalLeadCategory').innerHTML = `<option value="">-- Select Legal Category --</option>${categoryOptions}`;
-    document.getElementById('newCaseCategory').innerHTML = `<option value="">Select Category</option>${categoryOptions}`;
+  const opts = state.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
 
-    // Re-initialize custom dropdown UI styling
-    if(window.initCustomSelects) window.initCustomSelects();
-
-    // Render Admin Categories Table
-    const catTableBody = document.querySelector('#adminCategoriesTable tbody');
-    if (catTableBody) {
-        if (categoriesData.length === 0) {
-            catTableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#94a3b8;">No categories added yet.</td></tr>`;
-        } else {
-            catTableBody.innerHTML = categoriesData.map(c => `
-                <tr>
-                    <td><strong>${c.name}</strong></td>
-                    <td><button class="btn btn-danger btn-delete-cat" data-id="${c.id}" style="padding: 6px 12px; font-size: 0.85em;">Delete</button></td>
-                </tr>
-            `).join('');
-        }
-
-        catTableBody.querySelectorAll('.btn-delete-cat').forEach(btn => {
-            btn.addEventListener('click', () => deleteCategory(btn.getAttribute('data-id')));
-        });
+  const selects = ['frontendFilterCases', 'adminLeadFilter', 'globalLeadCategory', 'newCaseCategory'];
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      const current = el.value;
+      if (id === 'globalLeadCategory') {
+        el.innerHTML = `<option value="">— Select Legal Category —</option>${opts}`;
+      } else if (id === 'newCaseCategory') {
+        el.innerHTML = `<option value="">Select Category</option>${opts}`;
+      } else {
+        el.innerHTML = `<option value="All">All Categories</option>${opts}`;
+      }
+      if (current && [...el.options].some(o => o.value === current)) {
+        el.value = current;
+      }
     }
+  });
+
+  if (typeof window.initCustomSelects === 'function') {
+    window.initCustomSelects();
+  }
+
+  // Admin categories table
+  const tbody = document.querySelector('#adminCategoriesTable tbody');
+  if (tbody) {
+    if (!state.categories.length) {
+      tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#94a3b8;">No categories added yet.</td></tr>`;
+    } else {
+      tbody.innerHTML = state.categories.map(c => `
+        <tr>
+          <td><strong>${c.name}</strong></td>
+          <td><button class="btn btn-danger btn-sm btn-delete-cat" data-id="${c.id}">Delete</button></td>
+        </tr>
+      `).join('');
+    }
+    tbody.querySelectorAll('.btn-delete-cat').forEach(btn => {
+      btn.addEventListener('click', () => deleteCategory(btn.dataset.id));
+    });
+  }
 }
 
+// ---- Public Cases ----
 function renderPublicCases() {
-    const gridContainer = document.getElementById('frontendCasesList');
-    if (!gridContainer) return;
+  const grid = document.getElementById('frontendCasesList');
+  if (!grid) return;
 
-    const searchVal = document.getElementById('frontendSearchCases').value.toLowerCase();
-    const filterVal = document.getElementById('frontendFilterCases').value;
+  const search = document.getElementById('frontendSearchCases')?.value?.toLowerCase() || '';
+  const filter = document.getElementById('frontendFilterCases')?.value || 'All';
 
-    const filtered = casesData.filter(item => {
-        const titleMatch = item.title ? item.title.toLowerCase().includes(searchVal) : false;
-        const descMatch = item.description ? item.description.toLowerCase().includes(searchVal) : false;
-        const matchesCategory = (filterVal === 'All' || item.category === filterVal);
-        return (titleMatch || descMatch) && matchesCategory;
-    });
+  const filtered = state.cases.filter(c => {
+    const matchTitle = c.title?.toLowerCase().includes(search) || false;
+    const matchDesc = c.description?.toLowerCase().includes(search) || false;
+    return (matchTitle || matchDesc) && (filter === 'All' || c.category === filter);
+  });
 
-    if (filtered.length === 0) {
-        gridContainer.innerHTML = `<p style="grid-column: span 3; text-align: center; color: #64748b; padding: 40px 0;">No active cases matched your selected parameters.</p>`;
-        return;
-    }
+  if (!filtered.length) {
+    grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:#64748b;padding:40px 0;">No active cases matched your selected parameters.</p>`;
+    return;
+  }
 
-    gridContainer.innerHTML = filtered.map(item => {
-        const imageSrc = item.imageUrl || 'https://via.placeholder.com/400x250?text=Legal+Case';
-        return `
-            <div class="case-card" data-id="${item.id}">
-                <div class="case-img-wrap">
-                    <img src="${imageSrc}" alt="${item.category}" onerror="this.src='https://via.placeholder.com/400x250?text=Legal+Case'">
-                </div>
-                <div class="case-card-body">
-                    <span class="case-category">${item.category}</span>
-                    <h3>${item.title}</h3>
-                    <p>${item.description.substring(0, 140)}${item.description.length > 140 ? '...' : ''}</p>
-                    <div class="case-btn-group">
-                        <button class="btn btn-view-detail" data-id="${item.id}">View Detail</button>
-                        <button class="btn btn-secondary btn-tile-contact" data-category="${item.category}">Contact Us</button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    gridContainer.querySelectorAll('.btn-view-detail').forEach(btn => {
-        btn.addEventListener('click', () => showCaseDetailPage(btn.getAttribute('data-id')));
-    });
-
-    gridContainer.querySelectorAll('.btn-tile-contact').forEach(btn => {
-        btn.addEventListener('click', () => forwardToContactWithCategory(btn.getAttribute('data-category')));
-    });
-}
-
-function showCaseDetailPage(caseId) {
-    const caseObj = casesData.find(c => c.id === caseId);
-    if (!caseObj) return;
-
-    const detailsContainer = document.getElementById('dynamicCaseDetailContainer');
-    if (!detailsContainer) return;
-
-    const imageSrc = caseObj.imageUrl || 'https://via.placeholder.com/1100x380?text=Investigation+Banner';
-
-    detailsContainer.innerHTML = `
-        <div class="details-banner">
-            <img src="${imageSrc}" alt="${caseObj.category}" onerror="this.src='https://via.placeholder.com/1100x380?text=Investigation+Banner'">
+  grid.innerHTML = filtered.map(c => {
+    const img = c.imageUrl || 'https://via.placeholder.com/400x250?text=Legal+Case';
+    return `
+      <div class="case-card" data-id="${c.id}">
+        <div class="case-img-wrap">
+          <img src="${img}" alt="${c.category}" onerror="this.src='https://via.placeholder.com/400x250?text=Legal+Case'">
+          <span class="case-badge">Active</span>
         </div>
-        <div class="details-content">
-            <span class="case-category" style="margin-bottom: 15px;">${caseObj.category}</span>
-            <h1>${caseObj.title}</h1>
-            <div class="full-description">${caseObj.description}</div>
+        <div class="case-card-body">
+          <span class="case-category">${c.category}</span>
+          <h3>${c.title}</h3>
+          <p>${(c.description || '').substring(0, 140)}${(c.description || '').length > 140 ? '…' : ''}</p>
+          <div class="case-btn-group">
+            <button class="btn btn-primary btn-view-detail" data-id="${c.id}">View Detail</button>
+            <button class="btn btn-secondary btn-tile-contact" data-category="${c.category}">Contact Us</button>
+          </div>
         </div>
+      </div>
     `;
+  }).join('');
 
-    const globalSelect = document.getElementById('globalLeadCategory');
-    if (globalSelect) {
-        globalSelect.value = caseObj.category;
-        if(window.syncCustomSelect) window.syncCustomSelect('globalLeadCategory');
-    }
-
-    if (typeof window.navigateToPage === 'function') window.navigateToPage('case-details');
+  grid.querySelectorAll('.btn-view-detail').forEach(btn => {
+    btn.addEventListener('click', () => showCaseDetail(btn.dataset.id));
+  });
+  grid.querySelectorAll('.btn-tile-contact').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sel = document.getElementById('globalLeadCategory');
+      if (sel) {
+        sel.value = btn.dataset.category;
+        if (typeof window.syncCustomSelect === 'function') {
+          window.syncCustomSelect('globalLeadCategory');
+        }
+      }
+      if (typeof navigateToPage === 'function') {
+        navigateToPage('connect');
+      }
+      document.getElementById('globalContactSection')?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
 }
 
-function forwardToContactWithCategory(categoryName) {
-    const globalSelect = document.getElementById('globalLeadCategory');
-    if (globalSelect) {
-        globalSelect.value = categoryName;
-        if(window.syncCustomSelect) window.syncCustomSelect('globalLeadCategory');
-    }
-    if (typeof window.navigateToPage === 'function') window.navigateToPage('connect');
-    
-    const formSection = document.getElementById('globalContactSection');
-    if(formSection) formSection.scrollIntoView({ behavior: 'smooth' });
-}
+// ---- Case Detail ----
+function showCaseDetail(caseId) {
+  const c = state.cases.find(x => x.id === caseId);
+  if (!c) {
+    console.warn("Case not found:", caseId);
+    return;
+  }
+  const container = document.getElementById('dynamicCaseDetailContainer');
+  if (!container) return;
 
+  const img = c.imageUrl || 'https://via.placeholder.com/1100x380?text=Investigation+Banner';
+  container.innerHTML = `
+    <div class="details-banner">
+      <img src="${img}" alt="${c.category}" onerror="this.src='https://via.placeholder.com/1100x380?text=Investigation+Banner'">
+    </div>
+    <div class="details-content">
+      <span class="case-category">${c.category}</span>
+      <h1>${c.title}</h1>
+      <div class="full-description">${c.description || ''}</div>
+    </div>
+  `;
+
+  const sel = document.getElementById('globalLeadCategory');
+  if (sel) {
+    sel.value = c.category;
+    if (typeof window.syncCustomSelect === 'function') {
+      window.syncCustomSelect('globalLeadCategory');
+    }
+  }
+  if (typeof navigateToPage === 'function') {
+    navigateToPage('case-details');
+  }
+}
+window.showCaseDetail = showCaseDetail;
+
+// ---- Admin Dashboard ----
 function renderAdminDashboard() {
-    const leadsTableBody = document.querySelector('#adminLeadsTable tbody');
-    const leadFilter = document.getElementById('adminLeadFilter').value;
-    
-    if (leadsTableBody) {
-        const filteredLeads = leadsData.filter(l => leadFilter === 'All' || l.category === leadFilter);
-        if (filteredLeads.length === 0) {
-            leadsTableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8;">No lead records stored.</td></tr>`;
-        } else {
-            leadsTableBody.innerHTML = filteredLeads.map(l => `
-                <tr>
-                    <td><strong>${l.firstName} ${l.lastName}</strong></td>
-                    <td><a href="mailto:${l.email}">${l.email}</a></td>
-                    <td>${l.phone}</td>
-                    <td><span class="case-category" style="background:#475569">${l.category}</span></td>
-                    <td style="font-size:0.9em; max-width: 250px; white-space: pre-wrap;">${l.message}</td>
-                    <td><button class="btn btn-danger btn-admin-delete-lead" data-id="${l.id}" style="padding: 6px 10px; font-size: 0.85em;">Delete</button></td>
-                </tr>
-            `).join('');
-        }
+  // Leads
+  const leadTbody = document.querySelector('#adminLeadsTable tbody');
+  const filterEl = document.getElementById('adminLeadFilter');
+  const filter = filterEl ? filterEl.value : 'All';
 
-        leadsTableBody.querySelectorAll('.btn-admin-delete-lead').forEach(btn => {
-            btn.addEventListener('click', () => deleteLeadTracker(btn.getAttribute('data-id')));
-        });
+  if (leadTbody) {
+    const filtered = state.leads.filter(l => filter === 'All' || l.category === filter);
+    if (!filtered.length) {
+      leadTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No lead records stored.</td></tr>`;
+    } else {
+      leadTbody.innerHTML = filtered.map(l => `
+        <tr>
+          <td><strong>${l.firstName || ''} ${l.lastName || ''}</strong></td>
+          <td><a href="mailto:${l.email || ''}">${l.email || ''}</a></td>
+          <td>${l.phone || ''}</td>
+          <td><span class="badge">${l.category || ''}</span></td>
+          <td style="font-size:0.9rem;max-width:200px;white-space:pre-wrap;">${(l.message || '').substring(0,80)}${(l.message||'').length>80?'…':''}</td>
+          <td><button class="btn btn-danger btn-sm btn-admin-delete-lead" data-id="${l.id}">Delete</button></td>
+        </tr>
+      `).join('');
+    }
+    leadTbody.querySelectorAll('.btn-admin-delete-lead').forEach(btn => {
+      btn.addEventListener('click', () => deleteLead(btn.dataset.id));
+    });
+  }
+
+  // Cases (admin table)
+  const caseTbody = document.querySelector('#adminCasesTable tbody');
+  if (caseTbody) {
+    if (!state.cases.length) {
+      caseTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#94a3b8;">No dynamic cases posted.</td></tr>`;
+    } else {
+      caseTbody.innerHTML = state.cases.map(c => `
+        <tr>
+          <td><strong>${c.title}</strong></td>
+          <td><span class="badge badge-dark">${c.category}</span></td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-warning btn-sm btn-admin-edit" data-id="${c.id}">Edit</button>
+              <button class="btn btn-danger btn-sm btn-admin-delete" data-id="${c.id}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+    caseTbody.querySelectorAll('.btn-admin-edit').forEach(btn => {
+      btn.addEventListener('click', () => loadCaseForEdit(btn.dataset.id));
+    });
+    caseTbody.querySelectorAll('.btn-admin-delete').forEach(btn => {
+      btn.addEventListener('click', () => deleteCase(btn.dataset.id));
+    });
+  }
+}
+
+// =============================================================
+// CRUD OPERATIONS
+// =============================================================
+
+// ---- Delete Lead ----
+async function deleteLead(id) {
+  if (typeof window.customConfirm !== 'function') {
+    if (!confirm("Permanently delete this lead record?")) return;
+    await performDeleteLead(id);
+    return;
+  }
+  window.customConfirm("Permanently delete this lead record?", async () => {
+    await performDeleteLead(id);
+  });
+}
+
+async function performDeleteLead(id) {
+  try {
+    await deleteDoc(doc(db, "leads", id));
+    state.leads = state.leads.filter(l => l.id !== id);
+    renderAdminDashboard();
+    renderStats();
+    if (typeof window.showToast === 'function') window.showToast("Lead deleted.");
+  } catch (e) {
+    console.error(e);
+    if (typeof window.showToast === 'function') window.showToast("Delete failed.", "error");
+  }
+}
+
+// ---- Delete Case ----
+async function deleteCase(id) {
+  if (typeof window.customConfirm !== 'function') {
+    if (!confirm("Permanently delete this case profile?")) return;
+    await performDeleteCase(id);
+    return;
+  }
+  window.customConfirm("Permanently delete this case profile?", async () => {
+    await performDeleteCase(id);
+  });
+}
+
+async function performDeleteCase(id) {
+  try {
+    await deleteDoc(doc(db, "cases", id));
+    state.cases = state.cases.filter(c => c.id !== id);
+    if ($('editCaseTargetId')?.value === id) clearEditForm();
+    
+    // Safety check if deleted case is the target of the ad banner
+    if (state.adBanner.targetCaseId === id) {
+      state.adBanner.targetCaseId = '';
+      state.adBanner.isActive = false;
+      await setDoc(doc(db, "settings", "adBanner"), state.adBanner);
     }
 
-    const casesTableBody = document.querySelector('#adminCasesTable tbody');
-    if (casesTableBody) {
-        if (casesData.length === 0) {
-            casesTableBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8;">No dynamic cases posted.</td></tr>`;
-        } else {
-            casesTableBody.innerHTML = casesData.map(c => `
-                <tr>
-                    <td><strong>${c.title}</strong></td>
-                    <td><span class="case-category" style="background:#0f172a">${c.category}</span></td>
-                    <td>
-                        <div style="display:flex; gap: 8px;">
-                            <button class="btn btn-warning btn-admin-edit" data-id="${c.id}" style="padding: 6px 12px; font-size: 0.85em;">Edit</button>
-                            <button class="btn btn-danger btn-admin-delete" data-id="${c.id}" style="padding: 6px 12px; font-size: 0.85em;">Delete</button>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        casesTableBody.querySelectorAll('.btn-admin-edit').forEach(btn => {
-            btn.addEventListener('click', () => loadCaseIntoAdminForm(btn.getAttribute('data-id')));
-        });
-        casesTableBody.querySelectorAll('.btn-admin-delete').forEach(btn => {
-            btn.addEventListener('click', () => deleteCaseTracker(btn.getAttribute('data-id')));
-        });
-    }
+    renderAdminDashboard();
+    renderPublicCases();
+    renderAdBanner();
+    renderStats();
+    if (typeof window.showToast === 'function') window.showToast("Case deleted.");
+  } catch (e) {
+    console.error(e);
+    if (typeof window.showToast === 'function') window.showToast("Delete failed.", "error");
+  }
 }
 
-// ==========================================
-// ADMIN PANEL CRUD OPERATIONS
-// ==========================================
-
-function loadCaseIntoAdminForm(caseId) {
-    const targetCase = casesData.find(c => c.id === caseId);
-    if (!targetCase) return;
-
-    document.getElementById('editCaseTargetId').value = targetCase.id;
-    document.getElementById('newCaseTitle').value = targetCase.title;
-    document.getElementById('newCaseCategory').value = targetCase.category;
-    document.getElementById('newCaseImageUrl').value = targetCase.imageUrl || "";
-    document.getElementById('newCaseDesc').value = targetCase.description;
-
-    if(window.syncCustomSelect) window.syncCustomSelect('newCaseCategory');
-
-    document.getElementById('adminFormHeadline').innerText = "⚡ Edit Case Parameters Mode";
-    document.getElementById('adminFormSubmitBtn').innerText = "Save Modified Changes";
-    document.getElementById('adminFormSubmitBtn').className = "btn btn-warning";
-    document.getElementById('cancelEditCaseBtn').style.display = "inline-block";
-
-    document.getElementById('addCaseForm').scrollIntoView({ behavior: 'smooth' });
+// ---- Delete Category ----
+async function deleteCategory(id) {
+  if (typeof window.customConfirm !== 'function') {
+    if (!confirm("Delete this category? Cases using it will lose their filter association.")) return;
+    await performDeleteCategory(id);
+    return;
+  }
+  window.customConfirm("Delete this category? Cases using it will lose their filter association.", async () => {
+    await performDeleteCategory(id);
+  });
 }
 
-function clearAdminCaseFormState() {
-    document.getElementById('editCaseTargetId').value = "";
-    document.getElementById('addCaseForm').reset();
-    if(window.syncCustomSelect) window.syncCustomSelect('newCaseCategory');
-    
-    document.getElementById('adminFormHeadline').innerText = "Add New Case Investigation";
-    document.getElementById('adminFormSubmitBtn').innerText = "Add Case to Website";
-    document.getElementById('adminFormSubmitBtn').className = "btn";
-    document.getElementById('cancelEditCaseBtn').style.display = "none";
+async function performDeleteCategory(id) {
+  try {
+    await deleteDoc(doc(db, "categories", id));
+    state.categories = state.categories.filter(c => c.id !== id);
+    renderAll();
+    if (typeof window.showToast === 'function') window.showToast("Category deleted.");
+  } catch (e) {
+    console.error(e);
+    if (typeof window.showToast === 'function') window.showToast("Delete failed.", "error");
+  }
 }
 
-function deleteCaseTracker(caseId) {
-    window.customConfirm("Are you sure you want to completely erase this case profile from the tracking records?", async () => {
-        try {
-            await deleteDoc(doc(db, "cases", caseId));
-            casesData = casesData.filter(c => c.id !== caseId);
-            if(document.getElementById('editCaseTargetId').value === caseId) clearAdminCaseFormState();
+// ---- Load Case for Edit ----
+function loadCaseForEdit(id) {
+  const c = state.cases.find(x => x.id === id);
+  if (!c) return;
 
-            renderAdminDashboard();
-            renderPublicCases();
-            window.showToast("Case profile securely deleted from database.");
-        } catch (error) {
-            console.error("Deletion Error:", error);
-            window.showToast("Server refused deletion request.", "error");
-        }
-    });
+  const targetId = $('editCaseTargetId');
+  const title = $('newCaseTitle');
+  const category = $('newCaseCategory');
+  const imageUrl = $('newCaseImageUrl');
+  const desc = $('newCaseDesc');
+
+  if (targetId) targetId.value = c.id;
+  if (title) title.value = c.title || '';
+  if (category) category.value = c.category || '';
+  if (imageUrl) imageUrl.value = c.imageUrl || '';
+  if (desc) desc.value = c.description || '';
+
+  if (typeof window.syncCustomSelect === 'function') {
+    window.syncCustomSelect('newCaseCategory');
+  }
+
+  const headline = $('adminFormHeadline');
+  const submitBtn = $('adminFormSubmitBtn');
+  const cancelBtn = $('cancelEditCaseBtn');
+
+  if (headline) headline.textContent = '✏️ Edit Case Parameters';
+  if (submitBtn) {
+    submitBtn.textContent = '💾 Save Changes';
+    submitBtn.className = 'btn btn-warning';
+  }
+  if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
+  const form = $('addCaseForm');
+  if (form) form.scrollIntoView({ behavior: 'smooth' });
 }
 
-function deleteLeadTracker(leadId) {
-    window.customConfirm("Are you sure you want to permanently delete this lead data?", async () => {
-        try {
-            await deleteDoc(doc(db, "leads", leadId));
-            leadsData = leadsData.filter(l => l.id !== leadId);
-            
-            renderAdminDashboard();
-            window.showToast("Lead successfully removed from the database.");
-        } catch (error) {
-            console.error("Lead Deletion Error:", error);
-            window.showToast("Server refused deletion request.", "error");
-        }
-    });
+function clearEditForm() {
+  const targetId = $('editCaseTargetId');
+  const form = $('addCaseForm');
+  const headline = $('adminFormHeadline');
+  const submitBtn = $('adminFormSubmitBtn');
+  const cancelBtn = $('cancelEditCaseBtn');
+
+  if (targetId) targetId.value = '';
+  if (form) form.reset();
+
+  if (typeof window.syncCustomSelect === 'function') {
+    window.syncCustomSelect('newCaseCategory');
+  }
+
+  if (headline) headline.textContent = '➕ Add New Case Investigation';
+  if (submitBtn) {
+    submitBtn.textContent = 'Add Case to Website';
+    submitBtn.className = 'btn btn-primary';
+  }
+  if (cancelBtn) cancelBtn.style.display = 'none';
+}
+window.clearEditForm = clearEditForm;
+
+// ---- Export CSV ----
+function exportLeadsCSV() {
+  if (!state.leads.length) {
+    if (typeof window.showToast === 'function') window.showToast("No leads to export.", "error");
+    return;
+  }
+
+  let csv = "data:text/csv;charset=utf-8,First Name,Last Name,Email,Phone,Category,Message\n";
+  state.leads.forEach(l => {
+    const msg = (l.message || '').replace(/"/g, '""');
+    csv += `"${l.firstName||''}","${l.lastName||''}","${l.email||''}","${l.phone||''}","${l.category||''}","${msg}"\n`;
+  });
+
+  const a = document.createElement('a');
+  a.href = encodeURI(csv);
+  a.download = `leads_export_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  if (typeof window.showToast === 'function') window.showToast("Leads exported successfully!");
 }
 
-function deleteCategory(catId) {
-    window.customConfirm("Delete this category? Cases using this category will lose their filter association.", async () => {
-        try {
-            await deleteDoc(doc(db, "categories", catId));
-            categoriesData = categoriesData.filter(c => c.id !== catId);
-            
-            renderCategories();
-            renderPublicCases();
-            renderAdminDashboard();
-            window.showToast("Category successfully deleted.");
-        } catch (error) {
-            console.error("Category Deletion Error:", error);
-            window.showToast("Server refused deletion request.", "error");
-        }
-    });
-}
-
-function exportLeadsToCSV() {
-    if (leadsData.length === 0) {
-        window.showToast("No structural data inside the collection to export.", "error");
-        return;
-    }
-    
-    let csvContent = "data:text/csv;charset=utf-8,First Name,Last Name,Email,Phone,Category,Message\n";
-    leadsData.forEach(l => {
-        let cleanMsg = l.message ? l.message.replace(/"/g, '""') : "";
-        csvContent += `"${l.firstName}","${l.lastName}","${l.email}","${l.phone}","${l.category}","${cleanMsg}"\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const downloadAnchor = document.createElement("a");
-    downloadAnchor.setAttribute("href", encodedUri);
-    downloadAnchor.setAttribute("download", `lawsuitfiles_leads_export_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    document.body.removeChild(downloadAnchor);
-}
-
-// ==========================================
-// EVENT CONTROLLER BINDINGS
-// ==========================================
-
+// =============================================================
+// EVENT BINDINGS
+// =============================================================
 document.addEventListener('DOMContentLoaded', () => {
+  console.log("🚀 app.js initializing...");
 
-    document.getElementById('frontendSearchCases').addEventListener('input', renderPublicCases);
-    document.getElementById('frontendFilterCases').addEventListener('change', renderPublicCases);
-    document.getElementById('adminLeadFilter').addEventListener('change', renderAdminDashboard);
-    document.getElementById('exportCsvBtn').addEventListener('click', exportLeadsToCSV);
-    document.getElementById('cancelEditCaseBtn').addEventListener('click', clearAdminCaseFormState);
+  // Search / filter
+  const searchInput = $('frontendSearchCases');
+  const filterSelect = $('frontendFilterCases');
+  const leadFilter = $('adminLeadFilter');
 
-    // 1. Submit Public Lead Form
-    document.getElementById('globalContactForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const submitBtn = this.querySelector('button[type="submit"]');
-        submitBtn.innerText = "Processing Security Handshake...";
-        submitBtn.disabled = true;
+  if (searchInput) searchInput.addEventListener('input', renderPublicCases);
+  if (filterSelect) filterSelect.addEventListener('change', renderPublicCases);
+  if (leadFilter) leadFilter.addEventListener('change', renderAdminDashboard);
 
-        try {
-            const newLead = {
-                firstName: document.getElementById('globalLeadFirstName').value,
-                lastName: document.getElementById('globalLeadLastName').value,
-                email: document.getElementById('globalLeadEmail').value,
-                phone: document.getElementById('globalLeadPhone').value,
-                category: document.getElementById('globalLeadCategory').value,
-                message: document.getElementById('globalLeadMessage').value,
-                timestamp: new Date().toISOString()
-            };
+  // Export CSV
+  const exportBtn = $('exportCsvBtn');
+  if (exportBtn) exportBtn.addEventListener('click', exportLeadsCSV);
 
-            const docRef = await addDoc(collection(db, "leads"), newLead);
-            newLead.id = docRef.id;
-            leadsData.push(newLead);
-            
-            this.reset();
-            if(window.syncCustomSelect) window.syncCustomSelect('globalLeadCategory');
-            
-            window.showToast("Your secure information profile has been registered.");
-            renderAdminDashboard();
-        } catch (error) {
-            console.error("Lead Generation Error:", error);
-            window.showToast("Database intake rejected. Try again.", "error");
-        } finally {
-            submitBtn.innerText = "Submit Secure Consultation Request";
-            submitBtn.disabled = false;
-        }
-    });
+  // Cancel edit
+  const cancelBtn = $('cancelEditCaseBtn');
+  if (cancelBtn) cancelBtn.addEventListener('click', clearEditForm);
 
-    // 2. Admin Login (Hardcoded as requested)
-    document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const email = document.getElementById('adminEmail').value.trim();
-        const password = document.getElementById('adminPassword').value.trim();
+  // ---- Submit Lead Form ----
+  const leadForm = $('globalContactForm');
+  if (leadForm) {
+    leadForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = this.querySelector('button[type="submit"]');
+      const orig = btn?.textContent || 'Submit';
+      if (btn) {
+        btn.textContent = "Processing…";
+        btn.disabled = true;
+      }
 
-        if (email === "admin@gmail.com" && password === "admin1234") {
-            document.getElementById('adminLoginBox').style.display = 'none';
-            document.getElementById('adminDashboardBox').style.display = 'flex';
-            window.showToast("Authentication confirmed. Access granted.");
-            renderAdminDashboard();
-        } else {
-            window.showToast("Invalid clearance credentials.", "error");
-        }
-    });
-
-    // 3. Admin Logout
-    document.getElementById('adminLogoutBtn').addEventListener('click', () => {
-        document.getElementById('adminLoginForm').reset();
-        clearAdminCaseFormState();
-        document.getElementById('adminDashboardBox').style.display = 'none';
-        document.getElementById('adminLoginBox').style.display = 'block';
-        document.getElementById('adminOverlay').style.display = 'none';
-        window.showToast("Secure session terminated.");
-    });
-
-    // 4. Submit Admin Case (Create/Update)
-    document.getElementById('addCaseForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const targetId = document.getElementById('editCaseTargetId').value;
-        const titleVal = document.getElementById('newCaseTitle').value;
-        const catVal = document.getElementById('newCaseCategory').value;
-        const imgUrlVal = document.getElementById('newCaseImageUrl').value;
-        const descVal = document.getElementById('newCaseDesc').value;
-
-        const submitBtn = document.getElementById('adminFormSubmitBtn');
-        const originalText = submitBtn.innerText;
-        submitBtn.innerText = "Updating Database...";
-        submitBtn.disabled = true;
-
-        try {
-            if (targetId) {
-                // Update Existing
-                await updateDoc(doc(db, "cases", targetId), {
-                    title: titleVal, category: catVal, imageUrl: imgUrlVal, description: descVal
-                });
-                
-                const idx = casesData.findIndex(c => c.id === targetId);
-                if(idx !== -1) {
-                    casesData[idx] = { ...casesData[idx], title: titleVal, category: catVal, imageUrl: imgUrlVal, description: descVal };
-                }
-                window.showToast("Case parameters successfully modified.");
-                clearAdminCaseFormState();
-            } else {
-                // Insert New
-                const newCaseRef = await addDoc(collection(db, "cases"), {
-                    title: titleVal, category: catVal, imageUrl: imgUrlVal, description: descVal, createdAt: new Date().toISOString()
-                });
-                casesData.push({ id: newCaseRef.id, title: titleVal, category: catVal, imageUrl: imgUrlVal, description: descVal });
-                this.reset();
-                if(window.syncCustomSelect) window.syncCustomSelect('newCaseCategory');
-                window.showToast("New investigation active on frontend database.");
-            }
-            renderAdminDashboard();
-            renderPublicCases();
-        } catch (error) {
-            console.error("Database Write Error:", error);
-            window.showToast("Failed to modify database collection.", "error");
-        } finally {
-            submitBtn.innerText = originalText;
-            submitBtn.disabled = false;
-        }
-    });
-
-    // 5. Submit Global Settings
-    document.getElementById('updateSettingsForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const submitBtn = this.querySelector('button[type="submit"]');
-        submitBtn.innerText = "Syncing Settings...";
-        submitBtn.disabled = true;
-        
-        const newSettings = {
-            tel: document.getElementById('settingTel').value,
-            email: document.getElementById('settingEmail').value,
-            address: document.getElementById('settingAddress').value
+      try {
+        const lead = {
+          firstName: $('globalLeadFirstName')?.value?.trim() || '',
+          lastName: $('globalLeadLastName')?.value?.trim() || '',
+          email: $('globalLeadEmail')?.value?.trim() || '',
+          phone: $('globalLeadPhone')?.value?.trim() || '',
+          category: $('globalLeadCategory')?.value || '',
+          message: $('globalLeadMessage')?.value?.trim() || '',
+          timestamp: new Date().toISOString()
         };
 
-        try {
-            await setDoc(doc(db, "settings", "global"), newSettings);
-            settingsData = newSettings;
-            renderSettings();
-            window.showToast("Contact indices successfully updated!");
-        } catch (error) {
-            console.error("Settings Update Error:", error);
-            window.showToast("Failed to lock global settings.", "error");
-        } finally {
-            submitBtn.innerText = "Save Updates Globally";
-            submitBtn.disabled = false;
+        const ref = await addDoc(collection(db, "leads"), lead);
+        lead.id = ref.id;
+        state.leads.push(lead);
+        this.reset();
+
+        if (typeof window.syncCustomSelect === 'function') {
+          window.syncCustomSelect('globalLeadCategory');
         }
-    });
 
-    // 6. Add New Category
-    document.getElementById('addCategoryForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const submitBtn = this.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        
-        const catName = document.getElementById('newCategoryName').value.trim();
-
-        try {
-            const newCatRef = await addDoc(collection(db, "categories"), { name: catName });
-            categoriesData.push({ id: newCatRef.id, name: catName });
-            
-            this.reset();
-            renderCategories();
-            window.showToast("New category successfully added.");
-        } catch (error) {
-            console.error("Category Addition Error:", error);
-            window.showToast("Failed to add new category.", "error");
-        } finally {
-            submitBtn.disabled = false;
+        if (typeof window.showToast === 'function') {
+          window.showToast("Your information has been registered.");
         }
+        renderAdminDashboard();
+        renderStats();
+      } catch (err) {
+        console.error(err);
+        if (typeof window.showToast === 'function') {
+          window.showToast("Submission failed. Please try again.", "error");
+        }
+      } finally {
+        if (btn) {
+          btn.textContent = orig;
+          btn.disabled = false;
+        }
+      }
     });
+  }
 
-    // Mount initial Firebase Fetch
-    fetchDatabaseRecords();
+  // ---- Admin Login ----
+  const loginForm = $('adminLoginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = $('adminEmail')?.value?.trim() || '';
+      const pass = $('adminPassword')?.value?.trim() || '';
+
+      if (email === "admin@gmail.com" && pass === "admin1234") {
+        const loginBox = $('adminLoginBox');
+        const dashboard = $('adminDashboardBox');
+
+        if (loginBox) loginBox.style.display = 'none';
+        if (dashboard) {
+          dashboard.style.display = 'flex';
+          dashboard.classList.add('open');
+        }
+
+        state.isAdmin = true;
+        if (typeof window.showToast === 'function') window.showToast("Access granted.");
+        renderAdminDashboard();
+        renderStats();
+      } else {
+        if (typeof window.showToast === 'function') window.showToast("Invalid credentials.", "error");
+      }
+    });
+  }
+
+  // ---- Admin Logout ----
+  const logoutBtn = $('adminLogoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      const loginFormEl = $('adminLoginForm');
+      const dashboard = $('adminDashboardBox');
+      const loginBox = $('adminLoginBox');
+
+      if (loginFormEl) loginFormEl.reset();
+      clearEditForm();
+      if (dashboard) {
+        dashboard.classList.remove('open');
+        dashboard.style.display = 'none';
+      }
+      if (loginBox) loginBox.style.display = 'block';
+      const overlay = document.getElementById('adminOverlay');
+      if (overlay) overlay.style.display = 'none';
+
+      state.isAdmin = false;
+      if (typeof window.showToast === 'function') window.showToast("Session terminated.");
+    });
+  }
+
+  // ---- Add / Edit Case ----
+  const caseForm = $('addCaseForm');
+  if (caseForm) {
+    caseForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const id = $('editCaseTargetId')?.value || '';
+      const data = {
+        title: $('newCaseTitle')?.value?.trim() || '',
+        category: $('newCaseCategory')?.value || '',
+        imageUrl: $('newCaseImageUrl')?.value?.trim() || '',
+        description: $('newCaseDesc')?.value?.trim() || ''
+      };
+
+      const btn = $('adminFormSubmitBtn');
+      const orig = btn?.textContent || 'Save';
+      if (btn) {
+        btn.textContent = "Saving…";
+        btn.disabled = true;
+      }
+
+      try {
+        if (id) {
+          await updateDoc(doc(db, "cases", id), data);
+          const idx = state.cases.findIndex(c => c.id === id);
+          if (idx !== -1) state.cases[idx] = { ...state.cases[idx], ...data };
+          if (typeof window.showToast === 'function') window.showToast("Case updated.");
+          clearEditForm();
+        } else {
+          const ref = await addDoc(collection(db, "cases"), { ...data, createdAt: new Date().toISOString() });
+          state.cases.push({ id: ref.id, ...data });
+          this.reset();
+          if (typeof window.syncCustomSelect === 'function') {
+            window.syncCustomSelect('newCaseCategory');
+          }
+          if (typeof window.showToast === 'function') window.showToast("New case added.");
+        }
+        renderAdminDashboard();
+        renderPublicCases();
+        renderAdBanner(); // Refresh target case list
+        renderStats();
+      } catch (err) {
+        console.error(err);
+        if (typeof window.showToast === 'function') window.showToast("Database write failed.", "error");
+      } finally {
+        if (btn) {
+          btn.textContent = orig;
+          btn.disabled = false;
+        }
+      }
+    });
+  }
+
+  // ---- Update Ad Banner ----
+  const updateAdForm = $('updateAdForm');
+  if (updateAdForm) {
+    updateAdForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = this.querySelector('button[type="submit"]');
+      const orig = btn?.textContent || 'Save Ad Banner';
+      if (btn) {
+        btn.textContent = "Saving…";
+        btn.disabled = true;
+      }
+
+      const newAdData = {
+        imageUrl: $('adImageUrl')?.value?.trim() || '',
+        targetCaseId: $('adTargetCase')?.value || '',
+        isActive: $('adIsActive')?.checked || false
+      };
+
+      try {
+        await setDoc(doc(db, "settings", "adBanner"), newAdData);
+        state.adBanner = newAdData;
+        renderAdBanner();
+        if (typeof window.showToast === 'function') window.showToast("Ad Banner updated successfully.");
+      } catch (err) {
+        console.error(err);
+        if (typeof window.showToast === 'function') window.showToast("Ad Banner update failed.", "error");
+      } finally {
+        if (btn) {
+          btn.textContent = orig;
+          btn.disabled = false;
+        }
+      }
+    });
+  }
+
+  // ---- Update Settings ----
+  const settingsForm = $('updateSettingsForm');
+  if (settingsForm) {
+    settingsForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = this.querySelector('button[type="submit"]');
+      const orig = btn?.textContent || 'Save';
+      if (btn) {
+        btn.textContent = "Syncing…";
+        btn.disabled = true;
+      }
+
+      const newSettings = {
+        tel: $('settingTel')?.value?.trim() || '',
+        email: $('settingEmail')?.value?.trim() || '',
+        address: $('settingAddress')?.value?.trim() || ''
+      };
+
+      try {
+        await setDoc(doc(db, "settings", "global"), newSettings);
+        state.settings = newSettings;
+        renderSettings();
+        if (typeof window.showToast === 'function') window.showToast("Settings updated.");
+      } catch (err) {
+        console.error(err);
+        if (typeof window.showToast === 'function') window.showToast("Update failed.", "error");
+      } finally {
+        if (btn) {
+          btn.textContent = orig;
+          btn.disabled = false;
+        }
+      }
+    });
+  }
+
+  // ---- Add Category ----
+  const addCategoryBtn = document.getElementById('addCategoryBtn');
+  if (addCategoryBtn) {
+    addCategoryBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const btn = this;
+      btn.disabled = true;
+      btn.textContent = "Adding…";
+
+      const nameInput = document.getElementById('newCategoryName');
+      const name = nameInput?.value?.trim() || '';
+
+      if (!name) {
+        if (typeof window.showToast === 'function') {
+          window.showToast("Please enter a category name.", "error");
+        }
+        btn.disabled = false;
+        btn.textContent = "➕ Add Category";
+        return;
+      }
+
+      try {
+        // Check if category already exists
+        if (state.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+          if (typeof window.showToast === 'function') {
+            window.showToast("Category already exists.", "error");
+          }
+          btn.disabled = false;
+          btn.textContent = "➕ Add Category";
+          return;
+        }
+
+        const ref = await addDoc(collection(db, "categories"), { name });
+        state.categories.push({ id: ref.id, name });
+        if (nameInput) nameInput.value = '';
+        renderAll();
+        if (typeof window.showToast === 'function') {
+          window.showToast(`Category "${name}" added successfully.`);
+        }
+      } catch (err) {
+        console.error(err);
+        if (typeof window.showToast === 'function') {
+          window.showToast("Add failed. Please try again.", "error");
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "➕ Add Category";
+      }
+    });
+  }
+
+  // ---- Initial fetch ----
+  fetchAllData();
+
+  console.log("✅ app.js initialized successfully.");
 });
+
+console.log("📦 app.js loaded");
