@@ -18,7 +18,7 @@ import {
 // STATE
 // =============================================================
 const state = {
-  settings: { tel: "+1 (555) 000-0000", email: "legal@lawsuitefiles.com", address: "New York, United States" },
+  settings: { tel: "+1 (240) 369-1196", email: "legal@lawsuitefiles.com", address: "New York, United States" },
   adBanner: { imageUrl: "", targetCaseId: "", isActive: false },
   categories: [],
   cases: [],
@@ -612,7 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const email = $('adminEmail')?.value?.trim() || '';
       const pass = $('adminPassword')?.value?.trim() || '';
 
-      if (email === "admin@gmail.com" && pass === "admin1234") {
+      if (email === "admin@gmail.com" && pass === "Optenix@9547") {
         const loginBox = $('adminLoginBox');
         const dashboard = $('adminDashboardBox');
 
