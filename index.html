@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LawsuitFiles – Connecting You to Justice</title>
+    <title>FindTheFirm – Connecting You to Justice</title>
     <style>
         /* ============================================================
            CSS VARIABLES & RESET – Professional Legal Theme
@@ -198,6 +198,17 @@
         }
         .logo span .accent {
             color: var(--accent);
+        }
+
+        /* Nav Toggle Default (Hidden on Desktop) */
+        .nav-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.6rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            color: var(--primary);
         }
 
         nav {
@@ -1454,6 +1465,10 @@
         }
 
         @media (max-width: 768px) {
+            .nav-toggle {
+                display: block;
+            }
+
             header {
                 padding: 0 16px;
                 height: 64px;
@@ -1679,7 +1694,8 @@
                 <span>law<span class="accent">suit</span>files</span>
             </div>
 
-            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" style="display:none;background:none;border:none;font-size:1.4rem;cursor:pointer;padding:4px 8px;">☰</button>
+            <!-- Removed inline style display:none -->
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">☰</button>
 
             <nav id="mainNav" role="navigation" aria-label="Main navigation">
                 <a href="#home" onclick="navigateToPage('home'); return false;" class="active-nav">Home</a>
